@@ -2,3 +2,7 @@
 
 # vim
 *.swp
+
+# databases
+*.db
+*.sqlite
