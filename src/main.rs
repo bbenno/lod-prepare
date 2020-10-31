@@ -1,4 +1,6 @@
-use rusqlite::{Connection, Result, params};
+use rusqlite::{Connection, Result, params, OpenFlags};
+use config::File as ConfigFile;
+use config::Config;
 
 #[derive(Debug)]
 struct Measurement {
@@ -7,15 +9,21 @@ struct Measurement {
 }
 
 fn main() -> Result<()> {
+    let mut settings = Config::default();
+    settings
+        .merge(ConfigFile::with_name("config"))
+        .expect("Failed to load init config file");
+
     let measurement_id = 1;
-    let block_size = 64;
-    let conn = Connection::open("measurements.db")?;
+    let block_size = settings.get_int("block_size").expect("No block size configured") as usize;
+    let path = settings.get_str("database_host").expect("No database host configured");
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
         "SELECT I, Q FROM sensor_data
          WHERE measurement_id = ?1 AND sensor_id = ?2
          ORDER BY time_counter"
-    ).unwrap();
+    ).expect("Failed preparing SELECT statement");
 
     for sensor_id in 1..=5 {
         let measurements = stmt.query_map(params![measurement_id, sensor_id], |row| {

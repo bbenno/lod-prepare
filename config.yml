@@ -1,0 +1,2 @@
+block_size: 64
+database_host: measurements.db
