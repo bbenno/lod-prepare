@@ -15,9 +15,14 @@ fn main() -> Result<()> {
         .expect("Failed to load init config file");
 
     let measurement_id = 1;
-    let block_size = settings.get_int("block_size").expect("No block size configured") as usize;
+    let block_size = settings.get_int("block_size").expect("No block size configured");
     let path = settings.get_str("database_host").expect("No database host configured");
-    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
+
+    get_data(&path, block_size as usize, measurement_id)
+}
+
+fn get_data(db_path: &str, block_size: usize, measurement_id: u32) -> Result<()> {
+    let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
         "SELECT I, Q FROM sensor_data
