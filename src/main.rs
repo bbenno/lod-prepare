@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result, params, OpenFlags};
 use config::File as ConfigFile;
-use config::Config;
+use std::slice::Chunks;
 
 #[derive(Debug)]
 struct Measurement {
@@ -8,20 +8,44 @@ struct Measurement {
     q: i32,
 }
 
-fn main() -> Result<()> {
-    let mut settings = Config::default();
-    settings
-        .merge(ConfigFile::with_name("config"))
-        .expect("Failed to load init config file");
-
-    let measurement_id = 1;
-    let block_size = settings.get_int("block_size").expect("No block size configured");
-    let path = settings.get_str("database_host").expect("No database host configured");
-
-    get_data(&path, block_size as usize, measurement_id)
+struct Config {
+    block_size: usize,
+    db_host: String,
 }
 
-fn get_data(db_path: &str, block_size: usize, measurement_id: u32) -> Result<()> {
+fn main() -> Result<()> {
+    const measurement_id: u32 = 1;
+
+    let config = read_config("config").expect("Failed to load init config file");
+
+    let data = get_data(&config.db_host, config.block_size, measurement_id).unwrap();
+
+    for sensor in 1..=5 {
+        println!("Sensor {}", sensor);
+
+        for chunk in data[sensor - 1].chunks(config.block_size).into_iter() {
+            println!("Chunk {:?}", chunk);
+
+            for m in chunk {
+                println!("{:?}", m);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn read_config(path: &str) -> Result<Config> {
+    let mut settings = config::Config::default();
+    settings.merge(ConfigFile::with_name(path)).expect("Failed to find init config file");
+
+    Ok(Config {
+        block_size: settings.get_int("block_size").expect("No block size configured") as usize,
+        db_host: settings.get_str("database_host").expect("No database host configured"),
+    })
+}
+
+fn get_data(db_path: &str, block_size: usize, measurement_id: u32) -> Result<[Vec<Measurement>; 5]> {
     let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
@@ -30,21 +54,18 @@ fn get_data(db_path: &str, block_size: usize, measurement_id: u32) -> Result<()>
          ORDER BY time_counter"
     ).expect("Failed preparing SELECT statement");
 
+    let mut data: [Vec<Measurement>; 5] = Default::default();
+
     for sensor_id in 1..=5 {
-        let measurements = stmt.query_map(params![measurement_id, sensor_id], |row| {
+        let measurements = stmt.query_map(params![measurement_id, sensor_id as u32], |row| {
             Ok(Measurement {
                 i: row.get(0)?,
                 q: row.get(1)?,
             })
-        })?.collect::<Vec<_>>();
+        })?.map(|m| m.unwrap()).collect::<Vec<_>>();
 
-        let m_chunks = measurements.chunks(block_size);
-
-        println!("Sensor {}", sensor_id);
-        for measurement_block in m_chunks {
-            println!("{:?}", measurement_block);
-        }
+        data[sensor_id - 1] = measurements;
     }
 
-    Ok(())
+    Ok(data)
 }
