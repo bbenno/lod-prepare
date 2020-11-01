@@ -1,11 +1,6 @@
 use rusqlite::{Connection, Result, params, OpenFlags};
 use config::File as ConfigFile;
-
-#[derive(Debug)]
-struct Measurement {
-    i: i32,
-    q: i32,
-}
+use rustfft::num_complex::Complex;
 
 struct Config {
     block_size: usize,
@@ -40,7 +35,7 @@ fn read_config(path: &str) -> Result<Config> {
     })
 }
 
-fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Measurement>; 5]> {
+fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex<u16>>; 5]> {
     let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
@@ -49,15 +44,13 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Measurement>; 5]>
          ORDER BY time_counter"
     ).expect("Failed preparing SELECT statement");
 
-    let mut data: [Vec<Measurement>; 5] = Default::default();
+    let mut data: [Vec<Complex<u16>>; 5] = Default::default();
 
     for sensor_id in 1..=5 {
-        let measurements = stmt.query_map(params![measurement_id, sensor_id as u32], |row| {
-            Ok(Measurement {
-                i: row.get(0)?,
-                q: row.get(1)?,
-            })
-        })?.map(|m| m.unwrap()).collect::<Vec<_>>();
+        let measurements = stmt.query_map(
+            params![measurement_id, sensor_id as u32],
+            |row| { Ok(Complex::new(row.get(0)?, row.get(1)?)) }
+        )?.map(|m| m.unwrap()).collect::<Vec<_>>();
 
         data[sensor_id - 1] = measurements;
     }
@@ -65,6 +58,6 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Measurement>; 5]>
     Ok(data)
 }
 
-fn calc_fft(chunk: &[Measurement]) {
+fn calc_fft(chunk: &[Complex<u16>]) {
     println!("Chunk {:?}", chunk);
 }
