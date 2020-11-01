@@ -19,7 +19,6 @@ fn main() -> Result<()> {
     let mut fft: [Vec<Complex32>; 5] = Default::default();
 
     for sensor in 1..=5 {
-        println!("Sensor {}", sensor);
         fft [sensor - 1] = calc_fft(&mut data[sensor - 1], config.block_size)?;
     }
 
