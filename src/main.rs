@@ -1,73 +1,91 @@
-use rusqlite::{Connection, Result, params, OpenFlags};
-use config::File as ConfigFile;
+//! Window raw sensor and calculate FFT.
+
+#![warn(missing_docs)]
+
+use rusqlite::{Connection, MappedRows, OpenFlags, Result, Row, Statement, params};
+use config::{FileSourceFile, ConfigError, Config, File as ConfigFile};
 use rustfft::FFTplanner;
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 
-struct Config {
-    block_size: usize,
-    raw_db: String,
-    training_db: String
-}
+const SENSOR_COUNT: usize = 5;
 
 fn main() -> Result<()> {
-    const MEASUREMENT_ID: u32 = 1;
+    let config_file = ConfigFile::with_name("config");
+    let config = extract_config_from_file(config_file).unwrap();
 
-    let config = read_config("config").expect("Failed to load init config file");
+    let raw_db_conn = Connection::open_with_flags(config.get_str("raw_db_host").unwrap(), OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+    let mut data = get_data(raw_db_conn).unwrap();
 
-    let mut data = get_data(&config.raw_db, MEASUREMENT_ID).unwrap();
+    let fft_data = calc_fft(&mut data, config.get("block_size").unwrap());
 
-    let mut fft: [Vec<Complex32>; 5] = Default::default();
-
-    for sensor in 1..=5 {
-        fft [sensor - 1] = calc_fft(&mut data[sensor - 1], config.block_size)?;
-    }
-
-    println!("FFT: {:#?}", fft);
+    println!("FFT: {:#?}", fft_data);
 
     Ok(())
 }
 
-fn read_config(path: &str) -> Result<Config> {
-    let mut settings = config::Config::default();
-    settings.merge(ConfigFile::with_name(path)).expect("Failed to find init config file");
-
-    Ok(Config {
-        block_size: settings.get_int("block_size").expect("No block size configured") as usize,
-        raw_db: settings.get_str("raw_db_host").expect("No database of the raw sensor data configured"),
-        training_db: settings.get_str("training_db_host").expect("No database for the trainingsdata configured")
-    })
+fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, ConfigError> {
+    let mut config = config::Config::default();
+    config.merge(file)?;
+    Ok(config)
 }
 
-fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex32>; 5]> {
-    let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
+fn get_data(db_conn: Connection) -> Result<[Vec<Complex32>; SENSOR_COUNT]> {
+    let mut data: [Vec<Complex32>; SENSOR_COUNT] = Default::default();
+    const SQL: &str = "SELECT I, Q FROM sensor_data
+    WHERE measurement_id = ?1 AND sensor_id = ?2
+    ORDER BY time_counter";
+    let stmt = db_conn.prepare(SQL);
+    let mut stmt = stmt.unwrap();
+    let index_to_id = |idx: usize| -> u32 { idx as u32 + 1 };
 
-    let mut stmt = conn.prepare(
-        "SELECT I, Q FROM sensor_data
-         WHERE measurement_id = ?1 AND sensor_id = ?2
-         ORDER BY time_counter"
-    ).expect("Failed preparing SELECT statement");
-
-    let mut data: [Vec<Complex32>; 5] = Default::default();
-
-    for sensor_id in 1..=5 {
-        let measurements = stmt.query_map(
-            params![measurement_id, sensor_id as u32],
-            |row| -> Result<(u16,u16)> { Ok((row.get(0)?, row.get(1)?)) }
-        )?.map(|m| m.unwrap()).map(|m| Complex32::new(m.0 as f32, m.1 as f32)).collect::<Vec<_>>();
-
-        data[sensor_id - 1] = measurements;
-    }
+    let iter = 0..SENSOR_COUNT;
+    iter.for_each(|i| data[i] = get_sensor_data(&mut stmt, index_to_id(i)).unwrap());
 
     Ok(data)
 }
 
-fn calc_fft(mut input: &mut Vec<Complex32>, block_size: usize) -> Result<Vec<Complex32>> {
+fn get_sensor_data(stmt: &mut Statement, sensor_id: u32) -> Result<Vec<Complex32>> {
+    // For developing purposes temporary only measuring values of measurement 1 are considered.
+    const MEASUREMENT_ID: u32 = 1;
+
+    let mapped_rows = stmt
+        .query_map(
+            params![MEASUREMENT_ID, sensor_id],
+            convert_sql_row_to_complex,
+        )
+        .unwrap();
+    convert_rows_to_vec(mapped_rows)
+}
+
+fn convert_rows_to_vec<F>(rows: MappedRows<F>) -> Result<Vec<Complex32>>
+where F: FnMut(&Row<'_>) -> Result<Complex32> {
+    let vec = rows
+        .map(|row| row.unwrap())
+        .collect();
+    Ok(vec)
+}
+
+fn convert_sql_row_to_complex(row: &Row<'_>) -> Result<Complex32> {
+    let re: u16 = row.get(0)?;
+    let im: u16 = row.get(1)?;
+    Ok(Complex32::new(re as f32, im as f32))
+}
+
+fn calc_fft(data: &mut [Vec<Complex32>], block_size: usize) -> Result<[Vec<Complex32>; SENSOR_COUNT]> {
+    let mut fft: [Vec<Complex32>; SENSOR_COUNT] = Default::default();
+
+    let iter = data.iter_mut().map(|d| calc_sensor_fft(d, block_size));
+    iter.enumerate().for_each(|(i,d)| fft[i] = d.unwrap() );
+    Ok(fft)
+}
+
+fn calc_sensor_fft(input: &mut Vec<Complex32>, block_size: usize) -> Result<Vec<Complex32>> {
     let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
 
     let mut planner = FFTplanner::new(false);
     let fft = planner.plan_fft(block_size);
-    fft.process_multi(&mut input, &mut output);
+    fft.process_multi(input, &mut output);
 
     Ok(output)
 }
