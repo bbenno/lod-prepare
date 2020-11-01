@@ -23,11 +23,7 @@ fn main() -> Result<()> {
         println!("Sensor {}", sensor);
 
         for chunk in data[sensor - 1].chunks(config.block_size).into_iter() {
-            println!("Chunk {:?}", chunk);
-
-            for m in chunk {
-                println!("{:?}", m);
-            }
+            calc_fft(chunk);
         }
     }
 
@@ -67,4 +63,8 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Measurement>; 5]>
     }
 
     Ok(data)
+}
+
+fn calc_fft(chunk: &[Measurement]) {
+    println!("Chunk {:?}", chunk);
 }
