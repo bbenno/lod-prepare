@@ -16,10 +16,7 @@ fn main() -> Result<()> {
 
     for sensor in 1..=5 {
         println!("Sensor {}", sensor);
-
-        for chunk in data[sensor - 1].chunks(config.block_size).into_iter() {
-            calc_fft(chunk);
-        }
+        calc_fft(&data[sensor - 1], config.block_size);
     }
 
     Ok(())
@@ -58,6 +55,8 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex<u16>>; 5]
     Ok(data)
 }
 
-fn calc_fft(chunk: &[Complex<u16>]) {
-    println!("Chunk {:?}", chunk);
+fn calc_fft(input: &Vec<Complex<u16>>, block_size: usize) -> Result<Vec<Complex<f32>>> {
+    println!("Chunk {:?}", input);
+
+    Ok(Default::default())
 }
