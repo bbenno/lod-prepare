@@ -1,6 +1,5 @@
 use rusqlite::{Connection, Result, params, OpenFlags};
 use config::File as ConfigFile;
-use std::slice::Chunks;
 
 #[derive(Debug)]
 struct Measurement {
@@ -14,11 +13,11 @@ struct Config {
 }
 
 fn main() -> Result<()> {
-    const measurement_id: u32 = 1;
+    const MEASUREMENT_ID: u32 = 1;
 
     let config = read_config("config").expect("Failed to load init config file");
 
-    let data = get_data(&config.db_host, config.block_size, measurement_id).unwrap();
+    let data = get_data(&config.db_host, MEASUREMENT_ID).unwrap();
 
     for sensor in 1..=5 {
         println!("Sensor {}", sensor);
@@ -45,7 +44,7 @@ fn read_config(path: &str) -> Result<Config> {
     })
 }
 
-fn get_data(db_path: &str, block_size: usize, measurement_id: u32) -> Result<[Vec<Measurement>; 5]> {
+fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Measurement>; 5]> {
     let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
