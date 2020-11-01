@@ -18,11 +18,14 @@ fn main() -> Result<()> {
     let config = extract_config_from_file(config_file).unwrap();
 
     let raw_db_conn = Connection::open_with_flags(config.get_str("raw_db_host").unwrap(), OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
-    let mut data = get_data(raw_db_conn).unwrap();
+    let mut data = get_data(&raw_db_conn).unwrap();
 
-    let fft_data = calc_fft(&mut data, config.get("block_size").unwrap());
+    let fft_data = calc_fft(&mut data, config.get("block_size").unwrap()).unwrap();
 
     println!("FFT: {:#?}", fft_data);
+
+    let training_db_conn = raw_db_conn;
+    save_data(&training_db_conn, fft_data).unwrap();
 
     Ok(())
 }
@@ -33,7 +36,7 @@ fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, 
     Ok(config)
 }
 
-fn get_data(db_conn: Connection) -> Result<Vec<SensorData>> {
+fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
     const SQL: &str = "SELECT I, Q FROM sensor_data
     WHERE measurement_id = ?1 AND sensor_id = ?2
     ORDER BY block_id, item_id";
@@ -92,4 +95,10 @@ fn calc_sensor_fft(fft: &Arc<dyn FFT<f32>>, input: &mut Vec<Complex32>) -> Resul
     let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
     fft.process_multi(input, &mut output);
     Ok(output)
+}
+
+fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<()> {
+    // TODO
+
+    Ok(())
 }
