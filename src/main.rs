@@ -1,6 +1,8 @@
 use rusqlite::{Connection, Result, params, OpenFlags};
 use config::File as ConfigFile;
-use rustfft::num_complex::Complex;
+use rustfft::FFTplanner;
+use rustfft::num_complex::Complex32;
+use rustfft::num_traits::Zero;
 
 struct Config {
     block_size: usize,
@@ -12,12 +14,16 @@ fn main() -> Result<()> {
 
     let config = read_config("config").expect("Failed to load init config file");
 
-    let data = get_data(&config.db_host, MEASUREMENT_ID).unwrap();
+    let mut data = get_data(&config.db_host, MEASUREMENT_ID).unwrap();
+
+    let mut fft: [Vec<Complex32>; 5] = Default::default();
 
     for sensor in 1..=5 {
         println!("Sensor {}", sensor);
-        calc_fft(&data[sensor - 1], config.block_size);
+        fft [sensor - 1] = calc_fft(&mut data[sensor - 1], config.block_size)?;
     }
+
+    println!("FFT: {:#?}", fft);
 
     Ok(())
 }
@@ -32,7 +38,7 @@ fn read_config(path: &str) -> Result<Config> {
     })
 }
 
-fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex<u16>>; 5]> {
+fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex32>; 5]> {
     let conn = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_WRITE).expect("Failed to open database connection");
 
     let mut stmt = conn.prepare(
@@ -41,13 +47,13 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex<u16>>; 5]
          ORDER BY time_counter"
     ).expect("Failed preparing SELECT statement");
 
-    let mut data: [Vec<Complex<u16>>; 5] = Default::default();
+    let mut data: [Vec<Complex32>; 5] = Default::default();
 
     for sensor_id in 1..=5 {
         let measurements = stmt.query_map(
             params![measurement_id, sensor_id as u32],
-            |row| { Ok(Complex::new(row.get(0)?, row.get(1)?)) }
-        )?.map(|m| m.unwrap()).collect::<Vec<_>>();
+            |row| -> Result<(u16,u16)> { Ok((row.get(0)?, row.get(1)?)) }
+        )?.map(|m| m.unwrap()).map(|m| Complex32::new(m.0 as f32, m.1 as f32)).collect::<Vec<_>>();
 
         data[sensor_id - 1] = measurements;
     }
@@ -55,8 +61,12 @@ fn get_data(db_path: &str, measurement_id: u32) -> Result<[Vec<Complex<u16>>; 5]
     Ok(data)
 }
 
-fn calc_fft(input: &Vec<Complex<u16>>, block_size: usize) -> Result<Vec<Complex<f32>>> {
-    println!("Chunk {:?}", input);
+fn calc_fft(mut input: &mut Vec<Complex32>, block_size: usize) -> Result<Vec<Complex32>> {
+    let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
 
-    Ok(Default::default())
+    let mut planner = FFTplanner::new(false);
+    let fft = planner.plan_fft(block_size);
+    fft.process_multi(&mut input, &mut output);
+
+    Ok(output)
 }
