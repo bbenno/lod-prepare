@@ -1,2 +1,3 @@
 block_size: 64
-database_host: measurements.db
+raw_db_host: measurements.db
+training_db_host: training.db

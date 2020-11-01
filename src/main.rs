@@ -6,7 +6,8 @@ use rustfft::num_traits::Zero;
 
 struct Config {
     block_size: usize,
-    db_host: String,
+    raw_db: String,
+    training_db: String
 }
 
 fn main() -> Result<()> {
@@ -14,7 +15,7 @@ fn main() -> Result<()> {
 
     let config = read_config("config").expect("Failed to load init config file");
 
-    let mut data = get_data(&config.db_host, MEASUREMENT_ID).unwrap();
+    let mut data = get_data(&config.raw_db, MEASUREMENT_ID).unwrap();
 
     let mut fft: [Vec<Complex32>; 5] = Default::default();
 
@@ -33,7 +34,8 @@ fn read_config(path: &str) -> Result<Config> {
 
     Ok(Config {
         block_size: settings.get_int("block_size").expect("No block size configured") as usize,
-        db_host: settings.get_str("database_host").expect("No database host configured"),
+        raw_db: settings.get_str("raw_db_host").expect("No database of the raw sensor data configured"),
+        training_db: settings.get_str("training_db_host").expect("No database for the trainingsdata configured")
     })
 }
 
