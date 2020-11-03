@@ -66,7 +66,7 @@ where F: FnMut(&Row<'_>) -> Result<Complex32> {
     Ok(vec)
 }
 
-fn convert_sql_row_to_complex(row: &Row<'_>) -> Result<Complex32> {
+fn convert_sql_row_to_complex(row: &Row) -> Result<Complex32> {
     let re: u16 = row.get(0)?;
     let im: u16 = row.get(1)?;
     Ok(Complex32::new(re as f32, im as f32))
