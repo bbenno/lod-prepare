@@ -8,7 +8,7 @@ use rustfft::FFTplanner;
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 
-const SENSOR_COUNT: usize = 5;
+const SENSOR_COUNT: u32 = 5;
 
 fn main() -> Result<()> {
     let config_file = ConfigFile::with_name("config");
@@ -30,17 +30,19 @@ fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, 
     Ok(config)
 }
 
-fn get_data(db_conn: Connection) -> Result<[Vec<Complex32>; SENSOR_COUNT]> {
-    let mut data: [Vec<Complex32>; SENSOR_COUNT] = Default::default();
+type SensorData = (u32, Vec<Complex32>);
+
+fn get_data(db_conn: Connection) -> Result<Vec<SensorData>> {
     const SQL: &str = "SELECT I, Q FROM sensor_data
     WHERE measurement_id = ?1 AND sensor_id = ?2
     ORDER BY time_counter";
-    let stmt = db_conn.prepare(SQL);
-    let mut stmt = stmt.unwrap();
-    let index_to_id = |idx: usize| -> u32 { idx as u32 + 1 };
-
-    let iter = 0..SENSOR_COUNT;
-    iter.for_each(|i| data[i] = get_sensor_data(&mut stmt, index_to_id(i)).unwrap());
+    let stmt = db_conn.prepare(SQL).unwrap();
+    let data: Vec<_> = (1..=SENSOR_COUNT)
+        .filter_map(|i|
+            get_sensor_data(&mut stmt, i)
+                .map(|vec| (i, vec)).ok()
+        )
+        .collect();
 
     Ok(data)
 }
