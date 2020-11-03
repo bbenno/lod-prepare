@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 config = "0.10"
-rustfft = "4.0.0"
+rustfft = "4"
 
 [dependencies.rusqlite]
 version = "0.24.1"
