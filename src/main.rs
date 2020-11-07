@@ -40,46 +40,41 @@ fn main() -> Result<()> {
     let mut planner = FFTplanner::new(false);
     let fft = planner.plan_fft(N);
 
-    let insertions = SENSORS
-        .map(|sensor_id| {
-            calc_fft_for_sensordata(
-                &fft,
-                // SELECT RAW SENSOR DATA FROM DATABASE
-                &mut selection
-                    .query_map(
-                        params![MEASUREMENT_ID, sensor_id],
-                        |row| Ok(Complex32 {
-                            re: row.get_unwrap::<usize, u16>(0) as f32,
-                            im: row.get_unwrap::<usize, u16>(1) as f32,
-                        })
-                    ).unwrap()
-                    .map(|row| row.unwrap())
-                    .collect()
-            ).unwrap()
-            // DB INSERTION
-            .chunks_exact(N)
-            .enumerate()
-            .map(|(block_id, block)|
-            // Iteration over blocks
-                block
-                    .iter()
-                    .enumerate()
-                    .map(|(freq_idx, val)|
-                    // Iteration over values
-                        insertion
-                            .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1])
-                            .unwrap()
-                    )
-                    .sum::<usize>()
-            ).sum::<usize>()
-        })
-        .sum::<usize>();
-
-    println!("Inserted {} rows", &insertions);
+    SENSORS.for_each(|sensor_id|
+        calc_fft_for_sensordata(&fft,
+            // SELECT RAW SENSOR DATA FROM DATABASE
+            &mut selection
+                .query_map(
+                    params![MEASUREMENT_ID, sensor_id],
+                    |row| Ok(Complex32 {
+                        re: row.get_unwrap::<usize, u16>(0) as f32,
+                        im: row.get_unwrap::<usize, u16>(1) as f32,
+                    })
+                ).unwrap()
+                .map(|row| row.unwrap())
+                .collect()
+        ).unwrap()
+        // DB INSERTION
+        .chunks_exact(N)
+        .enumerate()
+        .for_each(|(block_id, block)|
+        // Iteration over blocks
+            block
+                .iter()
+                .enumerate()
+                .map(|(freq_idx, val)|
+                // Iteration over values
+                    insertion
+                        .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1]).unwrap()
+                )
+                .fold((), |t, _| t)
+        )
+    );
 
     // drop borrowed statements in order to drop t
     drop(insertion);
     drop(selection);
+
     tx.commit()
 }
 
