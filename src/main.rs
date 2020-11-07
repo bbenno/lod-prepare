@@ -21,11 +21,10 @@ const MEASUREMENT_ID: u32 = 1;
 
 /// SQL command to insert fft data
 const INSERT_SQL: &str =
-    "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value)
-     VALUES (?1, ?2, ?3, ?4, ?5)";
+    "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value) VALUES (?, ?, ?, ?, ?)";
 /// SQL query to select all raw sensor data
 const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
-    WHERE measurement_id = ?1 AND sensor_id = ?2
+    WHERE measurement_id = ? AND sensor_id = ?
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
