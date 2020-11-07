@@ -91,6 +91,7 @@ fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
     const MEASUREMENT_ID: u32 = 1;
     const SQL: &str = "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value) VALUES (?1, ?2, ?3, ?4, ?5)";
     let mut stmt = db_conn.prepare(SQL).unwrap();
+    let mut freq_generator = (0..N).map(|i| i as f64).cycle().map(|i| i / T);
 
     let c = data
         .chunks_exact(N)
@@ -103,11 +104,10 @@ fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
                 // Iteration over sensors
                     v
                         .iter()
-                        .enumerate()
-                        .map(|(freq, val)|
+                        .map(|val|
                         // Iteration over values
                             stmt
-                                .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, freq as u32 * 10, 1])
+                                .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, freq_generator.next().unwrap(), 1])
                                 .unwrap() as u32
                         )
                         .sum::<u32>()
