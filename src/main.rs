@@ -16,25 +16,33 @@ const T: f64 = 52.39e-3;
 /// Block size
 const N: usize = 64;
 
+const DB_PATH: &str = "measurements.db";
+
+const MEASUREMENT_ID: u32 = 1;
+
+const INSERT_SQL: &str =
+    "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value)
+     VALUES (?1, ?2, ?3, ?4, ?5)";
+const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
+    WHERE measurement_id = ?1 AND sensor_id = ?2
+    ORDER BY block_id, item_id";
+
 fn main() -> Result<()> {
-    let db_conn =
-        Connection::open_with_flags("measurements.db", OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+    let db_conn = Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let mut data = get_data(&db_conn).unwrap();
 
     let fft_data = calc_fft(&mut data).unwrap();
 
     println!("FFT: {:#?}", fft_data);
 
-    save_data(&db_conn, fft_data).unwrap();
+    let inserted_rows = save_data(db_conn.prepare(INSERT_SQL).unwrap(), &fft_data).unwrap();
+    println!("Inserted {} rows", inserted_rows);
 
     Ok(())
 }
 
 fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
-    const SQL: &str = "SELECT I, Q FROM `sensor_data`
-    WHERE measurement_id = ?1 AND sensor_id = ?2
-    ORDER BY block_id, item_id";
-    let mut stmt = db_conn.prepare(SQL).unwrap();
+    let mut stmt = db_conn.prepare(SELECT_SQL).unwrap();
     let data: Vec<_> = (1..=SENSOR_COUNT)
         .filter_map(|i| get_sensor_data(&mut stmt, i).map(|vec| (i, vec)).ok())
         .collect();
@@ -87,11 +95,7 @@ fn calc_sensor_fft(fft: &Arc<dyn FFT<f32>>, input: &mut Vec<Complex32>) -> Resul
     Ok(output)
 }
 
-fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
-    const MEASUREMENT_ID: u32 = 1;
-    const SQL: &str = "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value) VALUES (?1, ?2, ?3, ?4, ?5)";
-    let mut stmt = db_conn.prepare(SQL).unwrap();
-
+fn save_data(mut stmt: Statement, data: &Vec<SensorData>) -> Result<u32> {
     fn f_idx_to_freq(idx: usize) -> f64 {
         (idx as f64) / T
     };
