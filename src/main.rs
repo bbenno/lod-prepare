@@ -43,26 +43,25 @@ fn main() -> Result<()> {
 
 fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
     let mut stmt = db_conn.prepare(SELECT_SQL).unwrap();
-    let data: Vec<_> = (1..=SENSOR_COUNT)
-        .filter_map(|i| get_sensor_data(&mut stmt, i).map(|vec| (i, vec)).ok())
+
+    let data = (1..=SENSOR_COUNT)
+        .map(|sensor_id| {
+            (
+                sensor_id,
+                stmt.query_map(params![MEASUREMENT_ID, sensor_id], |row| {
+                    Ok(Complex32 {
+                        re: row.get_unwrap::<usize, u16>(0) as f32,
+                        im: row.get_unwrap::<usize, u16>(1) as f32,
+                    })
+                })
+                .unwrap()
+                .map(|row| row.unwrap())
+                .collect(),
+            )
+        })
         .collect();
 
     Ok(data)
-}
-
-fn get_sensor_data(stmt: &mut Statement, sensor_id: u32) -> Result<Vec<Complex32>> {
-    let rows = stmt
-        .query_map(params![MEASUREMENT_ID, sensor_id], |row| {
-            Ok(Complex32 {
-                re: row.get_unwrap::<usize, u16>(0) as f32,
-                im: row.get_unwrap::<usize, u16>(1) as f32,
-            })
-        })
-        .unwrap()
-        .map(|row| row.unwrap())
-        .collect();
-
-    Ok(rows)
 }
 
 fn calc_fft(data: &mut Vec<SensorData>) -> Result<Vec<SensorData>> {
