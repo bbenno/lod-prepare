@@ -97,28 +97,28 @@ fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
     };
 
     let c = data
-        .chunks_exact(N)
-        .enumerate()
-        .map(|(block_id, block)|
-        // Iteration over blocks
-            block
-                .into_iter()
-                .map(|(sensor_id,v)|
-                // Iteration over sensors
-                    v
+        .iter()
+        .map(|(sensor_id, v)|
+        // Iteration over sensors
+            v
+                .chunks_exact(N)
+                .enumerate()
+                .map(|(block_id, block)|
+                // Iteration over blocks
+                    block
                         .iter()
                         .enumerate()
-                        .map(|(f_idx, val)|
+                        .map(|(freq_idx, val)|
                         // Iteration over values
                             stmt
-                                .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(f_idx), 1])
+                                .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1])
                                 .unwrap() as u32
-                        )
-                        .sum::<u32>()
-                )
-                .sum::<u32>()
-        )
-        .sum::<u32>();
+                    )
+                    .sum::<u32>()
+            )
+            .sum::<u32>()
+    )
+    .sum::<u32>();
 
     Ok(c)
 }
