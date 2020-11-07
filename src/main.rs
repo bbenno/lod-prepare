@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 
-use rusqlite::{params, Connection, MappedRows, OpenFlags, Result, Row, Statement};
+use rusqlite::{params, Connection, OpenFlags, Result, Statement};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::{FFTplanner, FFT};
@@ -51,30 +51,18 @@ fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
 }
 
 fn get_sensor_data(stmt: &mut Statement, sensor_id: u32) -> Result<Vec<Complex32>> {
-    // For developing purposes temporary only measuring values of measurement 1 are considered.
-    const MEASUREMENT_ID: u32 = 1;
+    let rows = stmt
+        .query_map(params![MEASUREMENT_ID, sensor_id], |row| {
+            Ok(Complex32 {
+                re: row.get_unwrap::<usize, u16>(0) as f32,
+                im: row.get_unwrap::<usize, u16>(1) as f32,
+            })
+        })
+        .unwrap()
+        .map(|row| row.unwrap())
+        .collect();
 
-    let mapped_rows = stmt
-        .query_map(
-            params![MEASUREMENT_ID, sensor_id],
-            convert_sql_row_to_complex,
-        )
-        .unwrap();
-    convert_rows_to_vec(mapped_rows)
-}
-
-fn convert_rows_to_vec<F>(rows: MappedRows<F>) -> Result<Vec<Complex32>>
-where
-    F: FnMut(&Row) -> Result<Complex32>,
-{
-    let vec = rows.map(|row| row.unwrap()).collect();
-    Ok(vec)
-}
-
-fn convert_sql_row_to_complex(row: &Row) -> Result<Complex32> {
-    let re: u16 = row.get(0)?;
-    let im: u16 = row.get(1)?;
-    Ok(Complex32::new(re as f32, im as f32))
+    Ok(rows)
 }
 
 fn calc_fft(data: &mut Vec<SensorData>) -> Result<Vec<SensorData>> {
