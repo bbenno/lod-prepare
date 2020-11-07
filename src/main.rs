@@ -97,8 +97,30 @@ fn calc_sensor_fft(fft: &Arc<dyn FFT<f32>>, input: &mut Vec<Complex32>) -> Resul
     Ok(output)
 }
 
-fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<()> {
-    // TODO
+fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
+    const MEASUREMENT_ID: u32 = 1;
+    const SQL: &str = "INSERT INTO `training_data` (measurement_id, block_id, sensor_id, frequency, value) VALUES (?1, ?2, ?3, ?4, ?5)";
+    let mut stmt = db_conn.prepare(SQL).unwrap();
 
-    Ok(())
+    let c = data.chunks_exact(64)
+        .enumerate()
+        .map(|(block_id, block)|
+        // Iteration over blocks
+            block.into_iter()
+                .map(|(sensor_id,v)|
+                // Iteration over sensors
+                    v.iter()
+                        .enumerate()
+                        .map(|(freq, val)|
+                        // Iteration over values
+                            stmt.execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, freq as u32 * 10, 1])
+                                .unwrap() as u32
+                        )
+                        .sum::<u32>()
+                )
+                .sum::<u32>()
+        )
+        .sum::<u32>();
+
+    Ok(c)
 }
