@@ -56,6 +56,10 @@ fn main() -> Result<()> {
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
             output
+                .iter()
+                // OUTPUT NORMALIZATION
+                .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
+                .collect()
         }()
         // DB INSERTION
         .chunks_exact(N)
