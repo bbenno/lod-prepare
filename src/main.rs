@@ -29,7 +29,7 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
 
 fn main() -> Result<()> {
     let db_conn = Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
-    let mut data = get_data(&db_conn).unwrap();
+    let mut data = get_data(db_conn.prepare(SELECT_SQL).unwrap()).unwrap();
 
     let fft_data = calc_fft(&mut data).unwrap();
 
@@ -41,9 +41,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
-    let mut stmt = db_conn.prepare(SELECT_SQL).unwrap();
-
+fn get_data(mut stmt: Statement) -> Result<Vec<SensorData>> {
     let data = (1..=SENSOR_COUNT)
         .map(|sensor_id| {
             (
