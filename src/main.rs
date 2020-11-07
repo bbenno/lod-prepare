@@ -2,7 +2,6 @@
 
 #![warn(missing_docs)]
 
-use config::{Config, ConfigError, File as ConfigFile, FileSourceFile};
 use rusqlite::{params, Connection, MappedRows, OpenFlags, Result, Row, Statement};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
@@ -12,36 +11,27 @@ use std::sync::Arc;
 type SensorData = (u32, Vec<Complex32>);
 
 const SENSOR_COUNT: u32 = 5;
+/// Sampling time for N measurements
+const T: f64 = 52.39e-3;
+/// Block size
+const N: usize = 64;
 
 fn main() -> Result<()> {
-    let config_file = ConfigFile::with_name("config");
-    let config = extract_config_from_file(config_file).unwrap();
+    let db_conn =
+        Connection::open_with_flags("measurements.db", OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+    let mut data = get_data(&db_conn).unwrap();
 
-    let raw_db_conn = Connection::open_with_flags(
-        config.get_str("raw_db_host").unwrap(),
-        OpenFlags::SQLITE_OPEN_READ_WRITE,
-    )
-    .unwrap();
-    let mut data = get_data(&raw_db_conn).unwrap();
-
-    let fft_data = calc_fft(&mut data, config.get("block_size").unwrap()).unwrap();
+    let fft_data = calc_fft(&mut data).unwrap();
 
     println!("FFT: {:#?}", fft_data);
 
-    let training_db_conn = raw_db_conn;
-    save_data(&training_db_conn, fft_data).unwrap();
+    save_data(&db_conn, fft_data).unwrap();
 
     Ok(())
 }
 
-fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, ConfigError> {
-    let mut config = config::Config::default();
-    config.merge(file)?;
-    Ok(config)
-}
-
 fn get_data(db_conn: &Connection) -> Result<Vec<SensorData>> {
-    const SQL: &str = "SELECT I, Q FROM sensor_data
+    const SQL: &str = "SELECT I, Q FROM `sensor_data`
     WHERE measurement_id = ?1 AND sensor_id = ?2
     ORDER BY block_id, item_id";
     let mut stmt = db_conn.prepare(SQL).unwrap();
@@ -79,9 +69,9 @@ fn convert_sql_row_to_complex(row: &Row) -> Result<Complex32> {
     Ok(Complex32::new(re as f32, im as f32))
 }
 
-fn calc_fft(data: &mut Vec<SensorData>, block_size: usize) -> Result<Vec<SensorData>> {
+fn calc_fft(data: &mut Vec<SensorData>) -> Result<Vec<SensorData>> {
     let mut planner = FFTplanner::new(false);
-    let fft = planner.plan_fft(block_size);
+    let fft = planner.plan_fft(N);
 
     let fft_data = data
         .iter_mut()
@@ -103,11 +93,12 @@ fn save_data(db_conn: &Connection, data: Vec<SensorData>) -> Result<u32> {
     let mut stmt = db_conn.prepare(SQL).unwrap();
 
     let c = data
-        .chunks_exact(64)
+        .chunks_exact(N)
         .enumerate()
         .map(|(block_id, block)|
         // Iteration over blocks
-            block.into_iter()
+            block
+                .into_iter()
                 .map(|(sensor_id,v)|
                 // Iteration over sensors
                     v

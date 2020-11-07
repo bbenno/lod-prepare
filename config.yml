@@ -1,3 +1,0 @@
-block_size: 64
-raw_db_host: measurements.db
-training_db_host: training.db
