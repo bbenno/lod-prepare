@@ -28,17 +28,19 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
-    let db_conn = Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
-    let mut data = get_data(db_conn.prepare(SELECT_SQL).unwrap()).unwrap();
+    let mut db_conn =
+        Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+    let tx = db_conn.transaction().unwrap();
+    let mut data = get_data(tx.prepare(SELECT_SQL).unwrap()).unwrap();
 
     let fft_data = calc_fft(&mut data).unwrap();
 
     println!("FFT: {:#?}", fft_data);
 
-    let inserted_rows = save_data(db_conn.prepare(INSERT_SQL).unwrap(), &fft_data).unwrap();
+    let inserted_rows = save_data(tx.prepare(INSERT_SQL).unwrap(), &fft_data).unwrap();
     println!("Inserted {} rows", inserted_rows);
 
-    Ok(())
+    tx.commit()
 }
 
 fn get_data(mut stmt: Statement) -> Result<Vec<SensorData>> {
