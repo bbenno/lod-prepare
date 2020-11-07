@@ -5,8 +5,8 @@
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
-use rustfft::{FFTplanner, FFT};
-use std::{ops::RangeInclusive, sync::Arc};
+use rustfft::FFTplanner;
+use std::ops::RangeInclusive;
 
 const SENSORS: RangeInclusive<u32> = 1..=5;
 /// Sampling time for N measurements
@@ -41,9 +41,9 @@ fn main() -> Result<()> {
     let fft = planner.plan_fft(N);
 
     SENSORS.for_each(|sensor_id|
-        calc_fft_for_sensordata(&fft,
+        || -> Vec<Complex32> {
             // SELECT RAW SENSOR DATA FROM DATABASE
-            &mut selection
+            let mut input = selection
                 .query_map(
                     params![MEASUREMENT_ID, sensor_id],
                     |row| Ok(Complex32 {
@@ -52,8 +52,12 @@ fn main() -> Result<()> {
                     })
                 ).unwrap()
                 .map(|row| row.unwrap())
-                .collect()
-        ).unwrap()
+                .collect::<Vec<Complex32>>();
+            let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
+            // CALCULATE FFT
+            fft.process_multi(&mut input, &mut output);
+            output
+        }()
         // DB INSERTION
         .chunks_exact(N)
         .enumerate()
@@ -67,7 +71,7 @@ fn main() -> Result<()> {
                     insertion
                         .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1]).unwrap()
                 )
-                .fold((), |t, _| t)
+                .fold((), |_, _| ())
         )
     );
 
@@ -78,14 +82,6 @@ fn main() -> Result<()> {
     tx.commit()
 }
 
-fn calc_fft_for_sensordata(
-    fft: &Arc<dyn FFT<f32>>,
-    input: &mut Vec<Complex32>,
-) -> Result<Vec<Complex32>> {
-    let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
-    fft.process_multi(input, &mut output);
-    Ok(output)
-}
 fn f_idx_to_freq(idx: usize) -> f64 {
     (idx as f64) / T
 }
