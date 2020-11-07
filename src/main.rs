@@ -8,6 +8,8 @@ use rustfft::FFTplanner;
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 
+type SensorData = (u32, Vec<Complex32>);
+
 const SENSOR_COUNT: u32 = 5;
 
 fn main() -> Result<()> {
@@ -29,8 +31,6 @@ fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, 
     config.merge(file)?;
     Ok(config)
 }
-
-type SensorData = (u32, Vec<Complex32>);
 
 fn get_data(db_conn: Connection) -> Result<Vec<SensorData>> {
     const SQL: &str = "SELECT I, Q FROM sensor_data
@@ -61,7 +61,7 @@ fn get_sensor_data(stmt: &mut Statement, sensor_id: u32) -> Result<Vec<Complex32
 }
 
 fn convert_rows_to_vec<F>(rows: MappedRows<F>) -> Result<Vec<Complex32>>
-where F: FnMut(&Row<'_>) -> Result<Complex32> {
+where F: FnMut(&Row) -> Result<Complex32> {
     let vec = rows
         .map(|row| row.unwrap())
         .collect();
