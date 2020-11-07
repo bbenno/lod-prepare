@@ -2,9 +2,10 @@
 
 #![warn(missing_docs)]
 
+use std::sync::Arc;
 use rusqlite::{Connection, MappedRows, OpenFlags, Result, Row, Statement, params};
 use config::{FileSourceFile, ConfigError, Config, File as ConfigFile};
-use rustfft::FFTplanner;
+use rustfft::{FFT, FFTplanner};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 
@@ -35,12 +36,13 @@ fn extract_config_from_file(file: ConfigFile<FileSourceFile>) -> Result<Config, 
 fn get_data(db_conn: Connection) -> Result<Vec<SensorData>> {
     const SQL: &str = "SELECT I, Q FROM sensor_data
     WHERE measurement_id = ?1 AND sensor_id = ?2
-    ORDER BY time_counter";
-    let stmt = db_conn.prepare(SQL).unwrap();
+    ORDER BY block_id, item_id";
+    let mut stmt = db_conn.prepare(SQL).unwrap();
     let data: Vec<_> = (1..=SENSOR_COUNT)
         .filter_map(|i|
             get_sensor_data(&mut stmt, i)
-                .map(|vec| (i, vec)).ok()
+                .map(|vec| (i, vec))
+                .ok()
         )
         .collect();
 
@@ -74,20 +76,20 @@ fn convert_sql_row_to_complex(row: &Row) -> Result<Complex32> {
     Ok(Complex32::new(re as f32, im as f32))
 }
 
-fn calc_fft(data: &mut [Vec<Complex32>], block_size: usize) -> Result<[Vec<Complex32>; SENSOR_COUNT]> {
-    let mut fft: [Vec<Complex32>; SENSOR_COUNT] = Default::default();
-
-    let iter = data.iter_mut().map(|d| calc_sensor_fft(d, block_size));
-    iter.enumerate().for_each(|(i,d)| fft[i] = d.unwrap() );
-    Ok(fft)
-}
-
-fn calc_sensor_fft(input: &mut Vec<Complex32>, block_size: usize) -> Result<Vec<Complex32>> {
-    let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
-
+fn calc_fft(data: &mut Vec<SensorData>, block_size: usize) -> Result<Vec<SensorData>> {
     let mut planner = FFTplanner::new(false);
     let fft = planner.plan_fft(block_size);
-    fft.process_multi(input, &mut output);
 
+    let fft_data = data
+        .iter_mut()
+        .map(|(i, v)| (*i, calc_sensor_fft(&fft, v).unwrap()))
+        .collect();
+
+    Ok(fft_data)
+}
+
+fn calc_sensor_fft(fft: &Arc<dyn FFT<f32>>, input: &mut Vec<Complex32>) -> Result<Vec<Complex32>> {
+    let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
+    fft.process_multi(input, &mut output);
     Ok(output)
 }
