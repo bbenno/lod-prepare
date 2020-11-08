@@ -1,1 +1,12 @@
 /target
+
+# vim
+*.swp
+
+# VScode
+/.vs/
+/.vscode/
+
+# databases
+*.db
+*.sqlite
