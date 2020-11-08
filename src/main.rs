@@ -14,7 +14,7 @@ const T: f64 = 52.39e-3;
 /// Block size
 const N: usize = 64;
 
-const DB_PATH: &str = "measurements.db";
+const DB_PATH: &str = "../measurements.db";
 
 /// FOR DEVELOPMENT PURPOSE ONLY
 const MEASUREMENT_ID: u32 = 1;

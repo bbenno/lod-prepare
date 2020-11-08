@@ -4,7 +4,7 @@ const MEASUREMENT_ID: u32 = 1;
 const SENSOR_ID: u32 = 1;
 /// Block size
 const N: usize = 64;
-const DB_PATH: &str = "measurements.db";
+const DB_PATH: &str = "../measurements.db";
 
 const INSERT_SQL: &str = "INSERT INTO measured_values (measurement_id, block_id, sensor_id, item_id, phase, value) VALUES (?, ?, ?, ?, ?, ?)";
 const CLEAR_SQL: &str = "DELETE FROM measured_values";
