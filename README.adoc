@@ -10,11 +10,17 @@ More precisely this componet takes raw sensor measurments and transform them to 
 
 [IMPORTANT]
 .Prerequirements
-===========================================================================
+================================================================================
 * https://www.rust-lang.org[Rust] installed
 * https://www.sqlite.org[SQLite3] installed
 * created but yet empty database in the parent folder `../measurements.db`
-===========================================================================
+================================================================================
+
+[NOTE]
+================================================================================
+Hereinafter the String `DB_PATH` should be replaced by your database location:
+e.g. `cargo run DB_PATH` -> `cargo run ../measurements.db`
+================================================================================
 
 . Checkout project
 +
@@ -25,7 +31,7 @@ cd LOD-prepare
 +
 [source, shell]
 cargo build
-. Build and fill dummy databse
+. (optional) Build and fill dummy database
 +
 [source, shell]
 ------------------------------
@@ -34,4 +40,7 @@ cargo build
 . Run data transformation
 +
 [source, shell]
-cargo run
+cargo run DB_PATH
+. (optional) Show transformed data
+[source, shell]
+sqlite3 -readonly -box DB_PATH
