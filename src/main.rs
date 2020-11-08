@@ -6,15 +6,13 @@ use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, env};
 
 const SENSORS: RangeInclusive<u32> = 1..=5;
 /// Sampling time for N measurements
 const T: f64 = 52.39e-3;
 /// Block size
 const N: usize = 64;
-
-const DB_PATH: &str = "../measurements.db";
 
 /// FOR DEVELOPMENT PURPOSE ONLY
 const MEASUREMENT_ID: u32 = 1;
@@ -28,9 +26,11 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+
     // DB INIT
     let mut db_conn =
-        Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+        Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
     let mut insertion = tx.prepare(INSERT_SQL).unwrap();
     let mut selection = tx.prepare(SELECT_SQL).unwrap();
