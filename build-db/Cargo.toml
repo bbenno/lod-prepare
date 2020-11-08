@@ -1,19 +1,12 @@
 [package]
-name = "lod-prepare"
+name = "build-db"
 version = "0.3.0"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
 edition = "2018"
-default-run = "lod-prepare"
-
-[workspace]
-members = [
-    "build-db",
-]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rustfft = "4"
 exitcode = "1.1.2"
 
 [dependencies.rusqlite]

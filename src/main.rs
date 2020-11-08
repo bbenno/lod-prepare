@@ -6,7 +6,9 @@ use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
-use std::{ops::RangeInclusive, env};
+use std::ops::RangeInclusive;
+
+mod cli;
 
 const SENSORS: RangeInclusive<u32> = 1..=5;
 /// Sampling time for N measurements
@@ -26,7 +28,7 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let args = cli::get_args();
 
     // DB INIT
     let mut db_conn =
