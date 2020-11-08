@@ -3,6 +3,7 @@ name = "lod-prepare"
 version = "0.1.0"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
 edition = "2018"
+default-run = "lod-prepare"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
