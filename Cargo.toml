@@ -5,11 +5,16 @@ authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
 edition = "2018"
 default-run = "lod-prepare"
 
+[workspace]
+members = [
+    "build-db",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-config = "0.10"
 rustfft = "4"
+exitcode = "1.1.2"
 
 [dependencies.rusqlite]
 version = "0.24.1"
