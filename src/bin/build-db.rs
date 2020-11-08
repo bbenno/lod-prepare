@@ -1,17 +1,19 @@
+use std::env;
 use rusqlite::{params, Connection, OpenFlags, Result};
 
 const MEASUREMENT_ID: u32 = 1;
 const SENSOR_ID: u32 = 1;
 /// Block size
 const N: usize = 64;
-const DB_PATH: &str = "../measurements.db";
 
 const INSERT_SQL: &str = "INSERT INTO measured_values (measurement_id, block_id, sensor_id, item_id, phase, value) VALUES (?, ?, ?, ?, ?, ?)";
 const CLEAR_SQL: &str = "DELETE FROM measured_values";
 
 fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+
     let mut db_conn =
-        Connection::open_with_flags(DB_PATH, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+        Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
 
     tx.execute(CLEAR_SQL, params![]).unwrap();
