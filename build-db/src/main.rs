@@ -1,5 +1,7 @@
-use std::env;
 use rusqlite::{params, Connection, OpenFlags, Result};
+
+#[path = "../../src/cli.rs"]
+mod cli;
 
 const MEASUREMENT_ID: u32 = 1;
 const SENSOR_ID: u32 = 1;
@@ -10,7 +12,7 @@ const INSERT_SQL: &str = "INSERT INTO measured_values (measurement_id, block_id,
 const CLEAR_SQL: &str = "DELETE FROM measured_values";
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let args = cli::get_args();
 
     let mut db_conn =
         Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
