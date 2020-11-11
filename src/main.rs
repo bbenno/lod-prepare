@@ -63,7 +63,7 @@ fn main() -> Result<()> {
             debug!("{} input values", input.len());
             trace!("Input: {:#?}", input);
 
-            if input.len() % N == 0 {
+            if input.len() % N != 0 {
                 return Err("invalid data length");
             }
 
