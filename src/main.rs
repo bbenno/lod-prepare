@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
@@ -29,9 +29,10 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
-    // Init logger
+    // LOGGER INIT
     env_logger::init();
 
+    // CLI ARGS FETCH
     let args = cli::get_args();
 
     // DB INIT
@@ -64,6 +65,7 @@ fn main() -> Result<()> {
             trace!("Input: {:#?}", input);
 
             if input.len() % N != 0 {
+                error!("Count of input values has to be multiple of {}. Got: {}", N, input.len());
                 return Err("invalid data length");
             }
 
@@ -73,7 +75,7 @@ fn main() -> Result<()> {
                 .chunks_exact(N)
                 .map(|c| c.iter().sum::<Complex32>() / (N as f32))
                 .collect::<Vec<Complex32>>();
-            trace!("Means: {:?}", means);
+            trace!("Means (per chunk): {:?}", means);
 
             // INPUT NORMALIZATION
             //   x_i |-> x_i - mean
@@ -89,7 +91,9 @@ fn main() -> Result<()> {
                 .flatten()
                 .collect();
 
+            // Each input needs its output buffer to write to.
             let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
+
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
 
