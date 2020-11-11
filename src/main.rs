@@ -54,7 +54,17 @@ fn main() -> Result<()> {
                 ).unwrap()
                 .map(|row| row.unwrap())
                 .collect::<Vec<Complex32>>();
-            let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
+
+            let input_len = input.len();
+            if input_len == 0 {
+                return Default::default();
+            }
+
+            // normalize inputs
+            let mean:Complex32 = input.iter().sum::<Complex32>() / (input_len as f32);
+            input = input.iter().map(|c| c - mean).collect();
+
+            let mut output: Vec<Complex32> = vec![Zero::zero(); input_len];
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
             output
