@@ -122,12 +122,10 @@ fn main() -> Result<()> {
             block
                 .iter()
                 .enumerate()
-                .map(|(freq_idx, val)|
+                .for_each(|(freq_idx, val)| {
                 // Iteration over values
-                    insertion
-                        .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1]).unwrap()
-                )
-                .fold((), |_, _| ())
+                    insertion.execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), (val.im.powi(2) + val.re.powi(2)).sqrt() as f64]).unwrap();
+                })
         )
     );
 
