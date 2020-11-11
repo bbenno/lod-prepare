@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
@@ -28,6 +29,10 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
+    // LOGGER INIT
+    env_logger::init();
+
+    // CLI ARGS FETCH
     let args = cli::get_args();
 
     // DB INIT
@@ -42,7 +47,8 @@ fn main() -> Result<()> {
     let fft = planner.plan_fft(N);
 
     SENSORS.for_each(|sensor_id|
-        || -> Vec<Complex32> {
+        || -> Result<Vec<Complex32>, &'static str> {
+            info!("Read `measured_values` from database");
             // SELECT RAW SENSOR DATA FROM DATABASE
             let mut input = selection
                 .query_map(
@@ -51,18 +57,63 @@ fn main() -> Result<()> {
                         re: row.get_unwrap::<usize, u16>(0) as f32,
                         im: row.get_unwrap::<usize, u16>(1) as f32,
                     })
-                ).unwrap()
-                .map(|row| row.unwrap())
+                )
+                .expect("database failure while querying input")
+                .map(|row_result| row_result.unwrap())
                 .collect::<Vec<Complex32>>();
+            debug!("{} input values", input.len());
+            trace!("Input: {:#?}", input);
+
+            if input.len() % N != 0 {
+                error!("Count of input values has to be multiple of {}. Got: {}", N, input.len());
+                return Err("invalid data length");
+            }
+
+            // Calculate mean per chunk
+            //   mean = sum_(j=0)^N(x_j) / N
+            let means = input
+                .chunks_exact(N)
+                .map(|c| c.iter().sum::<Complex32>() / (N as f32))
+                .collect::<Vec<Complex32>>();
+            trace!("Means (per chunk): {:?}", means);
+
+            // INPUT NORMALIZATION
+            //   x_i |-> x_i - mean
+            input = input
+                .chunks_exact(N)
+                .enumerate()
+                .map(|(i, c)|
+                    c
+                        .iter()
+                        .map(|cc| cc - means[i])
+                        .collect::<Vec<Complex32>>()
+                )
+                .flatten()
+                .collect();
+
+            // Each input needs its output buffer to write to.
             let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
+
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
-            output
+
+            // OUTPUT NORMALIZATION
+            //   y_i |-> y_i / sqrt(N)
+            output = output
                 .iter()
-                // OUTPUT NORMALIZATION
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
-                .collect()
+                .collect::<Vec<Complex32>>();
+
+            if input.len() == 0 {
+                info!("no FFT input")
+            } else {
+                trace!("FFT input: {:?}", input);
+                trace!("FFT output: {:?}", output);
+            }
+
+            Ok(output)
         }()
+        .unwrap_or(Default::default())
         // DB INSERTION
         .chunks_exact(N)
         .enumerate()
@@ -71,12 +122,10 @@ fn main() -> Result<()> {
             block
                 .iter()
                 .enumerate()
-                .map(|(freq_idx, val)|
+                .for_each(|(freq_idx, val)| {
                 // Iteration over values
-                    insertion
-                        .execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), 1]).unwrap()
-                )
-                .fold((), |_, _| ())
+                    insertion.execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), (val.im.powi(2) + val.re.powi(2)).sqrt() as f64]).unwrap();
+                })
         )
     );
 

@@ -16,6 +16,8 @@ More precisely this componet takes raw sensor measurments and transform them to 
 * created but yet empty database in the parent folder `../measurements.db`
 ================================================================================
 
+TIP: Want to set up the entire development environment? Have a look at mine in link:tooling.adoc[Tooling] document.
+
 [NOTE]
 ================================================================================
 Hereinafter the String `DB_PATH` should be replaced by your database location:

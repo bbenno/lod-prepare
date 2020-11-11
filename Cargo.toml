@@ -1,6 +1,6 @@
 [package]
 name = "lod-prepare"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
 edition = "2018"
 default-run = "lod-prepare"
@@ -15,6 +15,8 @@ members = [
 [dependencies]
 rustfft = "4"
 exitcode = "1.1.2"
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
+env_logger = "*"
 
 [dependencies.rusqlite]
 version = "0.24.1"
