@@ -67,14 +67,16 @@ fn main() -> Result<()> {
                 return Err("invalid data length");
             }
 
-            // Calculate mean per chunk: mean = sum_(j=0)^N(x_j) / N
+            // Calculate mean per chunk
+            //   mean = sum_(j=0)^N(x_j) / N
             let means = input
                 .chunks_exact(N)
                 .map(|c| c.iter().sum::<Complex32>() / (N as f32))
                 .collect::<Vec<Complex32>>();
             trace!("Means: {:?}", means);
 
-            // INPUT NORMALIZATION: x_i |-> x_i - mean
+            // INPUT NORMALIZATION
+            //   x_i |-> x_i - mean
             input = input
                 .chunks_exact(N)
                 .enumerate()
@@ -91,7 +93,8 @@ fn main() -> Result<()> {
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
 
-            // OUTPUT NORMALIZATION: y_i |-> y_i / sqrt(N)
+            // OUTPUT NORMALIZATION
+            //   y_i |-> y_i / sqrt(N)
             output = output
                 .iter()
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
