@@ -2,12 +2,12 @@
 
 #![warn(missing_docs)]
 
+use log::{debug, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
 use std::ops::RangeInclusive;
-use log::debug;
 
 mod cli;
 
@@ -29,6 +29,9 @@ const SELECT_SQL: &str = "SELECT I, Q FROM `sensor_data`
     ORDER BY block_id, item_id";
 
 fn main() -> Result<()> {
+    // Init logger
+    env_logger::init();
+
     let args = cli::get_args();
 
     // DB INIT
@@ -44,6 +47,7 @@ fn main() -> Result<()> {
 
     SENSORS.for_each(|sensor_id|
         || -> Result<Vec<Complex32>, &'static str> {
+            info!("Read `measured_values` from database");
             // SELECT RAW SENSOR DATA FROM DATABASE
             let mut input = selection
                 .query_map(
@@ -56,6 +60,8 @@ fn main() -> Result<()> {
                 .expect("database failure while querying input")
                 .map(|row_result| row_result.unwrap())
                 .collect::<Vec<Complex32>>();
+            debug!("{} input values", input.len());
+            trace!("Input: {:#?}", input);
 
             if input.len() % N == 0 {
                 return Err("invalid data length");
@@ -66,6 +72,7 @@ fn main() -> Result<()> {
                 .chunks_exact(N)
                 .map(|c| c.iter().sum::<Complex32>() / (N as f32))
                 .collect::<Vec<Complex32>>();
+            trace!("Means: {:?}", means);
 
             // INPUT NORMALIZATION: x_i |-> x_i - mean
             input = input
@@ -90,8 +97,12 @@ fn main() -> Result<()> {
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
                 .collect::<Vec<Complex32>>();
 
-            debug!(&input);
-            debug!(&output);
+            if input.len() == 0 {
+                info!("no FFT input")
+            } else {
+                trace!("FFT input: {:?}", input);
+                trace!("FFT output: {:?}", output);
+            }
 
             Ok(output)
         }()
