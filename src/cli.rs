@@ -10,9 +10,12 @@ pub fn get_args() -> Vec<String> {
     match args.len() {
         2 => println!("Open database {}", &args[1]),
         _ => {
-            eprintln!("Usage: {} DB_PATH\nDB_PATH is the name of an SQLite database.", &args[0]);
+            eprintln!(
+                "Usage: {} DB_PATH\nDB_PATH is the name of an SQLite database.",
+                &args[0]
+            );
             process::exit(exitcode::USAGE);
-        },
+        }
     }
     args
 }
