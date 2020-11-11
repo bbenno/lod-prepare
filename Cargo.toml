@@ -15,6 +15,7 @@ members = [
 [dependencies]
 rustfft = "4"
 exitcode = "1.1.2"
+log = "0.4"
 
 [dependencies.rusqlite]
 version = "0.24.1"

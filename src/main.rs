@@ -7,6 +7,7 @@ use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
 use std::ops::RangeInclusive;
+use log::debug;
 
 mod cli;
 
@@ -82,11 +83,17 @@ fn main() -> Result<()> {
             let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
-            Ok(output
+
+            // OUTPUT NORMALIZATION: y_i |-> y_i / sqrt(N)
+            output = output
                 .iter()
-                // OUTPUT NORMALIZATION
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
-                .collect())
+                .collect::<Vec<Complex32>>();
+
+            debug!(&input);
+            debug!(&output);
+
+            Ok(output)
         }()
         .unwrap_or(Default::default())
         // DB INSERTION
