@@ -51,8 +51,9 @@ fn main() -> Result<()> {
                         re: row.get_unwrap::<usize, u16>(0) as f32,
                         im: row.get_unwrap::<usize, u16>(1) as f32,
                     })
-                ).unwrap()
-                .map(|row| row.unwrap())
+                )
+                .expect("database failure while querying input")
+                .map(|row_result| row_result.unwrap())
                 .collect::<Vec<Complex32>>();
 
             if input.len() % N == 0 {
