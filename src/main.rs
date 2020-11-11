@@ -60,9 +60,24 @@ fn main() -> Result<()> {
                 return Err("invalid data length");
             }
 
-            // normalize inputs
-            let mean:Complex32 = input.iter().sum::<Complex32>() / (input.len() as f32);
-            input = input.iter().map(|c| c - mean).collect();
+            // Calculate mean per chunk: mean = sum_(j=0)^N(x_j) / N
+            let means = input
+                .chunks_exact(N)
+                .map(|c| c.iter().sum::<Complex32>() / (N as f32))
+                .collect::<Vec<Complex32>>();
+
+            // INPUT NORMALIZATION: x_i |-> x_i - mean
+            input = input
+                .chunks_exact(N)
+                .enumerate()
+                .map(|(i, c)|
+                    c
+                        .iter()
+                        .map(|cc| cc - means[i])
+                        .collect::<Vec<Complex32>>()
+                )
+                .flatten()
+                .collect();
 
             let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
             // CALCULATE FFT
