@@ -3,6 +3,8 @@ Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>
 
 * https://www.rust-lang.org/[Rust] v1.47.0
 * https://code.visualstudio.com[Visual Studio Code] v1.50.1
-** https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb[CodeLLDB] (`vadimcn.vscode-lldb`) v1.6.0 +
+** CodeLLDB https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb[`vadimcn.vscode-lldb`] v1.6.0 +
    -> Rust Debugging
+** Rust https://github.com/rust-lang/rls-vscode[`rust-lang.rust`]
+** rust-analyzer https://github.com/rust-analyzer/rust-analyzer[`matklad.rust-analyzer`]
 * https://www.sqlite.org[SQLite] v3.33.0
