@@ -42,7 +42,7 @@ fn main() -> Result<()> {
     let fft = planner.plan_fft(N);
 
     SENSORS.for_each(|sensor_id|
-        || -> Vec<Complex32> {
+        || -> Result<Vec<Complex32>, &'static str> {
             // SELECT RAW SENSOR DATA FROM DATABASE
             let mut input = selection
                 .query_map(
@@ -55,24 +55,24 @@ fn main() -> Result<()> {
                 .map(|row| row.unwrap())
                 .collect::<Vec<Complex32>>();
 
-            let input_len = input.len();
-            if input_len == 0 {
-                return Default::default();
+            if input.len() % N == 0 {
+                return Err("invalid data length");
             }
 
             // normalize inputs
-            let mean:Complex32 = input.iter().sum::<Complex32>() / (input_len as f32);
+            let mean:Complex32 = input.iter().sum::<Complex32>() / (input.len() as f32);
             input = input.iter().map(|c| c - mean).collect();
 
-            let mut output: Vec<Complex32> = vec![Zero::zero(); input_len];
+            let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
             // CALCULATE FFT
             fft.process_multi(&mut input, &mut output);
-            output
+            Ok(output
                 .iter()
                 // OUTPUT NORMALIZATION
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
-                .collect()
+                .collect())
         }()
+        .unwrap_or(Default::default())
         // DB INSERTION
         .chunks_exact(N)
         .enumerate()
