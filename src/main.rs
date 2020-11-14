@@ -28,6 +28,11 @@ const SELECT_SQL: &str = "SELECT `measuring_point_id`, `I`, `Q` FROM `sensor_val
     WHERE `measurement_id` = ? AND `sensor_id` = ?
     ORDER BY `block_id`, `item_id`";
 
+struct SensorValue {
+    id: u32,
+    value: Complex32,
+}
+
 fn main() -> Result<()> {
     // LOGGER INIT
     env_logger::init();
