@@ -52,20 +52,29 @@ fn main() -> Result<()> {
     let fft = planner.plan_fft(N);
 
     SENSORS.for_each(|sensor_id|
-        || -> Result<Vec<Complex32>, &'static str> {
+        || -> Result<Vec<SensorValue>, &'static str> {
             info!("Read `measured_values` from database");
             // SELECT RAW SENSOR DATA FROM DATABASE
-            let mut input = selection
+            let input_values = selection
                 .query_map(
                     params![MEASUREMENT_ID, sensor_id],
-                    |row| Ok(Complex32 {
-                        re: row.get_unwrap::<usize, u16>(0) as f32,
-                        im: row.get_unwrap::<usize, u16>(1) as f32,
+                    |row| Ok(SensorValue {
+                        id: row.get_unwrap(0),
+                        value: Complex32 {
+                            re: row.get_unwrap::<usize, u16>(1) as f32,
+                            im: row.get_unwrap::<usize, u16>(2) as f32,
+                        },
                     })
                 )
                 .expect("database failure while querying input")
                 .map(|row_result| row_result.unwrap())
+                .collect::<Vec<SensorValue>>();
+
+            let mut input = input_values
+                .iter()
+                .map(|sv| sv.value)
                 .collect::<Vec<Complex32>>();
+
             debug!("{} input values", input.len());
             trace!("Input: {:#?}", input);
 
@@ -104,10 +113,12 @@ fn main() -> Result<()> {
 
             // OUTPUT NORMALIZATION
             //   y_i |-> y_i / sqrt(N)
-            output = output
+            let output_values = output
                 .iter()
                 .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
-                .collect::<Vec<Complex32>>();
+                .zip(input_values.iter().map(|d| d.id))
+                .map(|(c, i)| SensorValue { id: i, value: c})
+                .collect::<Vec<SensorValue>>();
 
             if input.len() == 0 {
                 info!("no FFT input")
@@ -116,20 +127,19 @@ fn main() -> Result<()> {
                 trace!("FFT output: {:?}", output);
             }
 
-            Ok(output)
+            Ok(output_values)
         }()
         .unwrap_or(Default::default())
         // DB INSERTION
         .chunks_exact(N)
-        .enumerate()
-        .for_each(|(block_id, block)|
+        .for_each(|block|
         // Iteration over blocks
             block
                 .iter()
                 .enumerate()
-                .for_each(|(freq_idx, val)| {
+                .for_each(|(freq_idx, sv)| {
                 // Iteration over values
-                    insertion.execute(params![MEASUREMENT_ID, block_id as u32, sensor_id, f_idx_to_freq(freq_idx), (val.im.powi(2) + val.re.powi(2)).sqrt() as f64]).unwrap();
+                    insertion.execute(params![sv.id, f_idx_to_freq(freq_idx), (sv.value.im.powi(2) + sv.value.re.powi(2)).sqrt() as f64]).unwrap();
                 })
         )
     );
