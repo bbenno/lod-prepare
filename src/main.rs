@@ -144,7 +144,7 @@ fn main() -> Result<()> {
         )
     );
 
-    // drop borrowed statements in order to drop t
+    // drop borrowed statements in order to drop Transaction tx
     drop(insertion);
     drop(selection);
 
