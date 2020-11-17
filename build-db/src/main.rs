@@ -31,51 +31,27 @@ fn main() -> Result<()> {
 
     let mut insert_measuring_value = tx
         .prepare(
-            "INSERT INTO `measuring_value` (measuring_point_id, phase, value) VALUES (?, ?, ?)",
+            "INSERT INTO `measuring_value` (`measuring_point_id`, `block_element`, `phase`, `value`) VALUES (?, ?, ?, ?)",
         )
         .unwrap();
 
     let mut insert_measuring_point = tx
         .prepare(
-            "INSERT INTO `measuring_point` (block_id, measurement_id, sensor_id) VALUES (?, ?, ?)",
+            "INSERT INTO `measuring_point` (`block_id`, `measurement_id`, `sensor_id`) VALUES (?, ?, ?)",
         )
         .unwrap();
 
-    let mut insert_measuring_time = tx
-        .prepare("INSERT INTO `measuring_time` (block, block_element) VALUES (?, ?)")
-        .unwrap();
-
     let mut insert_measurement = tx
-        .prepare("INSERT INTO `measurement` (id, date) VALUES (?, ?)")
+        .prepare("INSERT INTO `measurement` (`id`, `date`) VALUES (?, ?)")
         .unwrap();
-
-    // INSERT measuring_times
-    // |   id | block | block_element |
-    // | ---- | ----- | ------------- |
-    // |    1 |     0 |             0 |
-    // |    2 |     0 |             1 |
-    // |  ... |   ... |           ... |
-    // |    N |     0 |           N-1 |
-    // | N +1 |     1 |             0 |
-    // |  ... |   ... |           ... |
-    // |  N*M |   M-1 |           N-1 |
-    (0..M).for_each(|block| {
-        // for each block
-        (0..N).for_each(|block_element| {
-            // for each block element
-            insert_measuring_time
-                .execute(params![block as u32, block_element as u32])
-                .unwrap();
-        });
-    });
 
     // INSERT measurements
-    // |  id | ... |
-    // | --- |
-    // |   1 |
-    // |   2 |
-    // | ... |
-    // |   O |
+    // |  id | date |
+    // | --- | ---- |
+    // |   1 |  now |
+    // |   2 |  now |
+    // | ... |  now |
+    // |   O |  now |
     (1..=O).for_each(|measurement_id| {
         insert_measurement
             .execute(params![
@@ -89,21 +65,21 @@ fn main() -> Result<()> {
     });
 
     // INSERT measuring_points
-    // |       id | measuring_id | block_id | sensor_id |
-    // | -------- | ------------ | -------- | --------- |
-    // |        1 |            0 |        0 |         1 |
-    // |        2 |            0 |        0 |         2 |
-    // |      ... |          ... |      ... |       ... |
-    // |        P |            0 |        0 |         P |
-    // |     P +1 |            0 |        1 |         1 |
-    // |      ... |          ... |      ... |       ... |
-    // |    N*M*P |            0 |   N*M -1 |         P |
-    // | N*M*P +1 |            1 |        0 |         1 |
-    // |      ... |          ... |      ... |       ... |
-    // |  O*N*M*P |            O |   N*M -1 |         P |
+    // |     id | measuring_id | block_id | sensor_id |
+    // | ------ | ------------ | -------- | --------- |
+    // |      1 |            1 |        1 |         1 |
+    // |      2 |            1 |        1 |         2 |
+    // |    ... |          ... |      ... |       ... |
+    // |      P |            1 |        1 |         P |
+    // |   P +1 |            1 |        2 |         1 |
+    // |    ... |          ... |      ... |       ... |
+    // |    M*P |            1 |        M |         P |
+    // | M*P +1 |            2 |        1 |         1 |
+    // |    ... |          ... |      ... |       ... |
+    // |  O*M*P |            O |        M |         P |
     (1..=O).for_each(|measurement_id| {
         // for all measurements
-        (1..=(N * M)).for_each(|block_id| {
+        (1..=M).for_each(|block_id| {
             // for all block_elements
             (1..=P as u32).for_each(|sensor_id| {
                 // for all sensors
@@ -118,45 +94,50 @@ fn main() -> Result<()> {
         });
     });
 
-    /// Calculates: `2¹¹ × cos(i × 2π / N) + 2¹¹ ∈ {0..2¹²}`
+    /// Calculates: `(2¹¹ - 1) × (1 + cos(i × 2π / N)) + 1 ∈ {1..2¹²-1}`
     fn cos_value_generator(i: usize) -> f64 {
-        MEAN + MEAN * (X * i as f64).cos()
+        (MEAN - 1f64) * (1f64 + (X * i as f64).cos()) + 1f64
     }
 
-    /// Calculates: `2¹¹ × sin(i × 2π / N) + 2¹¹ ∈ {0..2¹²}`
+    /// Calculates: `(2¹¹ - 1) × (1 + sin(i × 2π / N)) + 1 ∈ {1..2¹²-1}`
     fn sin_value_generator(i: usize) -> f64 {
-        MEAN + MEAN * (X * i as f64).sin()
+        (MEAN - 1f64) * (1f64 + (X * i as f64).sin()) + 1f64
     }
 
     // INSERT measuring_values
-    // |            id | measurement_point_id | phase | value |
-    // | ------------- | -------------------- | ----- | ----- |
-    // |             0 |                    0 |     0 |  XXXX |
-    // |             1 |                    0 |     1 |  XXXX |
-    // |             2 |                    1 |     0 |  XXXX |
-    // |             3 |                    1 |     1 |  XXXX |
-    // |             4 |                    2 |     0 |  XXXX |
-    // |           ... |                  ... |   ... |   ... |
-    // | 2* O*N*M*P -1 |              O*N*M*P |     1 |  XXXX |
-    (1..=(O * N * M * P)).for_each(|measuring_point_id| {
-        // for each measuring_point_id
-        (0..=1).for_each(|phase| {
-            // for each phase
-            insert_measuring_value
-                .execute(params![
-                    measuring_point_id as u32,
-                    phase,
-                    phase * cos_value_generator(measuring_point_id) as u16
-                        + (1 - phase) * sin_value_generator(measuring_point_id) as u16,
-                ])
-                .unwrap();
+    // |        id | measurement_point_id | block_element | phase | value |
+    // | --------- | -------------------- | ------------- | ----- | ----- |
+    // |         1 |                    1 |             1 |     0 |  XXXX |
+    // |         2 |                    1 |             1 |     1 |  XXXX |
+    // |         3 |                    1 |             2 |     0 |  XXXX |
+    // |         4 |                    1 |             2 |     1 |  XXXX |
+    // |         5 |                    1 |             3 |     0 |  XXXX |
+    // |       ... |                  ... |               |   ... |   ... |
+    // |       2*N |                    1 |             N |     1 |  XXXX |
+    // |    2*N +1 |                    2 |             1 |     0 |  XXXX |
+    // |       ... |                  ... |           ... |   ... |   ... |
+    // | 2*N*O*M*P |                O*M*P |             N |     1 |  XXXX |
+    (1..=(O * M * P)).for_each(|measuring_point_id| {
+        (1..=N).for_each(|block_element| {
+            // for each measuring_point_id
+            (0..=1).for_each(|phase| {
+                // for each phase
+                insert_measuring_value
+                    .execute(params![
+                        measuring_point_id as u32,
+                        block_element as u32,
+                        phase,
+                        phase * cos_value_generator(block_element) as u16
+                            + (1 - phase) * sin_value_generator(block_element) as u16,
+                    ])
+                    .unwrap();
+            });
         });
     });
 
     // drop borrowed statements in order to drop Transaction tx
     drop(insert_measuring_value);
     drop(insert_measuring_point);
-    drop(insert_measuring_time);
     drop(insert_measurement);
 
     tx.commit()
