@@ -1,6 +1,6 @@
 [package]
 name = "lod-prepare"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
 edition = "2018"
 default-run = "lod-prepare"
