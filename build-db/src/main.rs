@@ -1,3 +1,4 @@
+use log::{debug, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use std::{f64::consts::PI, time::SystemTime};
 
@@ -18,11 +19,15 @@ const MEAN: f64 = 2048f64;
 const X: f64 = 2.0 * PI / N as f64;
 
 fn main() -> Result<()> {
+    // LOGGER INIT
+    env_logger::init();
+
     let args = cli::get_args();
 
     let mut db_conn =
         Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
+    debug!("Database connection established");
 
     //tx.execute("DELETE FROM measuring_value", params![]).unwrap();
     //tx.execute("DELETE FROM measuring_point", params![]).unwrap();
@@ -45,7 +50,12 @@ fn main() -> Result<()> {
         .prepare("INSERT INTO `measurement` (`id`, `date`) VALUES (?, ?)")
         .unwrap();
 
-    // INSERT measurements
+    let measurement_date = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+
+    info!("INSERT measurements");
     // |  id | date |
     // | --- | ---- |
     // |   1 |  now |
@@ -53,18 +63,17 @@ fn main() -> Result<()> {
     // | ... |  now |
     // |   O |  now |
     (1..=O).for_each(|measurement_id| {
+        trace!(
+            "INSERT `measurement` (id: {}, date: {})",
+            measurement_id,
+            measurement_date
+        );
         insert_measurement
-            .execute(params![
-                measurement_id as u32,
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs() as u32,
-            ])
+            .execute(params![measurement_id as u32, measurement_date,])
             .unwrap();
     });
 
-    // INSERT measuring_points
+    info!("INSERT measuring_points");
     // |     id | measuring_id | block_id | sensor_id |
     // | ------ | ------------ | -------- | --------- |
     // |      1 |            1 |        1 |         1 |
@@ -83,6 +92,12 @@ fn main() -> Result<()> {
             // for all block_elements
             (1..=P as u32).for_each(|sensor_id| {
                 // for all sensors
+                trace!(
+                    "INSERT `measuring_point` (block_id: {}, measurement_id: {}, sensor_id: {})",
+                    block_id,
+                    measurement_id,
+                    sensor_id
+                );
                 insert_measuring_point
                     .execute(params![
                         block_id as u32,
@@ -104,36 +119,45 @@ fn main() -> Result<()> {
         (MEAN - 1f64) * (1f64 + (X * i as f64).sin()) + 1f64
     }
 
-    // INSERT measuring_values
-    // |        id | measurement_point_id | block_element | phase | value |
-    // | --------- | -------------------- | ------------- | ----- | ----- |
-    // |         1 |                    1 |             1 |     0 |  XXXX |
-    // |         2 |                    1 |             1 |     1 |  XXXX |
-    // |         3 |                    1 |             2 |     0 |  XXXX |
-    // |         4 |                    1 |             2 |     1 |  XXXX |
-    // |         5 |                    1 |             3 |     0 |  XXXX |
-    // |       ... |                  ... |               |   ... |   ... |
-    // |       2*N |                    1 |             N |     1 |  XXXX |
-    // |    2*N +1 |                    2 |             1 |     0 |  XXXX |
-    // |       ... |                  ... |           ... |   ... |   ... |
-    // | 2*N*O*M*P |                O*M*P |             N |     1 |  XXXX |
+    info!("INSERT measuring_values");
+    // |        id | measuring_point_id | block_element | phase | value |
+    // | --------- | ------------------ | ------------- | ----- | ----- |
+    // |         1 |                  1 |             1 |     0 |  XXXX |
+    // |         2 |                  1 |             1 |     1 |  XXXX |
+    // |         3 |                  1 |             2 |     0 |  XXXX |
+    // |         4 |                  1 |             2 |     1 |  XXXX |
+    // |         5 |                  1 |             3 |     0 |  XXXX |
+    // |       ... |                ... |               |   ... |   ... |
+    // |       2*N |                  1 |             N |     1 |  XXXX |
+    // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
+    // |       ... |                ... |           ... |   ... |   ... |
+    // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
     (1..=(O * M * P)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
             (0..=1).for_each(|phase| {
                 // for each phase
+                let value = phase * cos_value_generator(block_element) as u16 + (1 - phase) * sin_value_generator(block_element) as u16;
+                trace!(
+                    "INSERT `measuring_value` (measurement_point_id: {}, block_element: {}, phase: {}, value: {})",
+                    measuring_point_id,
+                    block_element,
+                    phase,
+                    value
+                );
                 insert_measuring_value
                     .execute(params![
                         measuring_point_id as u32,
                         block_element as u32,
                         phase,
-                        phase * cos_value_generator(block_element) as u16
-                            + (1 - phase) * sin_value_generator(block_element) as u16,
+                        value,
                     ])
                     .unwrap();
             });
         });
     });
+
+    info!("Finished");
 
     // drop borrowed statements in order to drop Transaction tx
     drop(insert_measuring_value);
