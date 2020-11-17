@@ -7,7 +7,6 @@ use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
-use std::ops::RangeInclusive;
 
 mod cli;
 
