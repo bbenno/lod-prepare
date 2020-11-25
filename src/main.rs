@@ -105,7 +105,7 @@ fn main() -> Result<()> {
         //   yᵢ ↦ yᵢ / √N
         let output_values = output
             .iter()
-            .map(|c| c * (1.0 / (input.len() as f32).sqrt()))
+            .map(|c| c * (N as f32).sqrt().recip())
             .zip(input_values.iter().map(|d| d.id))
             .map(|(c, i)| SensorValue { id: i, value: c})
             .collect::<Vec<SensorValue>>();
@@ -129,7 +129,7 @@ fn main() -> Result<()> {
             .enumerate()
             .for_each(|(freq_idx, sv)| {
             // Iteration over values
-                insertion.execute(params![sv.id, f_idx_to_freq(freq_idx), (sv.value.im.powi(2) + sv.value.re.powi(2)).sqrt() as f64]).unwrap();
+                insertion.execute(params![sv.id, f_idx_to_freq(freq_idx), sv.value.norm() as f64]).unwrap();
             })
     );
 
