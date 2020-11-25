@@ -81,7 +81,7 @@ fn main() -> Result<()> {
             .collect::<Vec<Complex32>>();
         trace!("Means (per chunk): {:?}", means);
 
-        // INPUT NORMALIZATION
+        // INPUT NORMALIZATION: Remove DC offset
         //   xᵢ ↦ xᵢ - mean
         input = input
             .chunks_exact(N)
