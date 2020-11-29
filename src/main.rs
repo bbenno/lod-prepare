@@ -74,7 +74,7 @@ fn main() -> Result<()> {
         }
 
         // Calculate mean per chunk
-        //   mean = ∑ᴺⱼ₌₀(xⱼ) / N
+        //   mean = ∑ᴺᵢ₌₁(xᵢ) / N
         let means = input
             .chunks_exact(N)
             .map(|c| c.iter().sum::<Complex32>() / (N as f32))
