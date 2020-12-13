@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 
-use clap::{App, ArgGroup, crate_authors, crate_description, crate_version};
+use clap::{crate_authors, crate_description, crate_version, App, ArgGroup};
 use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
@@ -172,6 +172,8 @@ fn f_idx_to_freq(idx: usize) -> f64 {
 
 /// Dirichlet window
 ///
+/// 𝑤(𝑛) = 1,   𝑛 = 0,…,𝑁-1
+///
 /// # Arguments
 ///
 /// * `n` - index of current input signal in window of width N
@@ -194,6 +196,12 @@ fn dirichlet(_n: u32) -> f32 {
 }
 
 /// Blackman window with α = 0.16
+///
+/// 𝑤(𝑛) = 𝛼₀ − 𝛼₁ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)) − 𝛼₂ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)),   𝑛 = 0,…,𝑁-1
+///
+/// * 𝛼₀ = 0.5 × (1 - 𝛼)
+/// * 𝛼₁ = 0.5
+/// * 𝛼₂ = 0.5 × 𝛼
 ///
 /// # Arguments
 ///
@@ -223,6 +231,11 @@ fn blackman(n: u32) -> f32 {
 }
 
 /// Hamming window
+///
+/// 𝑤(𝑛) = 𝛼 − 𝛽 × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)),   𝑛 = 0,…,𝑁-1
+///
+/// * 𝛼 = 25 / 46
+/// * 𝛽 = 1 - 𝛼
 ///
 /// # Arguments
 ///
