@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+use clap::{App, ArgGroup, crate_authors, crate_description, crate_version};
 use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
@@ -9,12 +10,12 @@ use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
 use std::f32::consts::PI;
 
-mod cli;
-
 /// Sampling time for N measurements
 const T: f64 = 52.39e-3;
 /// Block size
 const N: usize = 64;
+
+type Window = fn(u32) -> f32;
 
 struct SensorValue {
     id: u32,
@@ -25,12 +26,34 @@ fn main() -> Result<()> {
     // LOGGER INIT
     env_logger::init();
 
-    // CLI ARGS FETCH
-    let args = cli::get_args();
+    let opts = App::new("LOD Prepare")
+        .about(crate_description!())
+        .author(crate_authors!())
+        .version(crate_version!())
+        .args_from_usage(
+            "<database>                  'Sets the database file to use'
+             [hamming]  -h --hamming     'Sets hamming window function'
+             [blackman] -b --blackman    'Sets blackman window function'",
+        )
+        .group(
+            ArgGroup::with_name("window function")
+                .args(&["hamming", "blackman"])
+                .required(false),
+        )
+        .get_matches();
+
+    let window: Window = match opts {
+        _ if opts.is_present("hamming") => hamming,
+        _ if opts.is_present("blackman") => blackman,
+        _ => dirichlet,
+    };
+    let db_name = opts
+        .value_of("database")
+        .expect("Failed to read line argument \"database\"");
 
     // DB INIT
     let mut db_conn =
-        Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+        Connection::open_with_flags(db_name, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
     let mut insertion = tx
         .prepare("INSERT INTO `training_value` (`measuring_point_id`, `frequency`, `value`) VALUES (?, ?, ?)")
@@ -91,6 +114,8 @@ fn main() -> Result<()> {
                 c
                     .iter()
                     .map(|cc| cc - means[i])
+                    .enumerate()
+                    .map(|(i,c)| window(i as u32) * c)
                     .collect::<Vec<Complex32>>()
             )
             .flatten()
@@ -145,7 +170,30 @@ fn f_idx_to_freq(idx: usize) -> f64 {
     (idx as f64) / T
 }
 
-/// Blackman window mit α = 0.16
+/// Dirichlet window
+///
+/// # Arguments
+///
+/// * `n` - index of current input signal in window of width N
+///
+/// # Example
+///
+/// ```
+/// input
+///     .chunks_exact(N)
+///     .map(|(index, chunk)| {
+///         chunk
+///             .iter()
+///             .enumerate()
+///             .map(|(index, value)| hamming(index as u32) * value)
+///             .collect()
+///     });
+/// ```
+fn dirichlet(_n: u32) -> f32 {
+    return 1f32;
+}
+
+/// Blackman window with α = 0.16
 ///
 /// # Arguments
 ///

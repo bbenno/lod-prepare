@@ -2,6 +2,7 @@
 name = "lod-prepare"
 version = "0.3.0"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
+description = "Transform raw sensor data and prepare it for ML usage"
 edition = "2018"
 default-run = "lod-prepare"
 
