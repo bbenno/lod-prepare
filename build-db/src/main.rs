@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         .value_of("sensors")
         .expect("Failed to get value of 'sensors'")
         .parse()
-        .expect("Failed to parse value of sensor=\"{}\" to number");
+        .expect("Failed to parse value of sensors to number");
     let measurement_count: usize = opts
         .value_of("measurements")
         .expect("Failed to get value of 'measurements'")
@@ -98,6 +98,7 @@ fn main() -> Result<()> {
 
     info!("INSERT measuring_points");
     // O ≡ measurement_count
+    // P ≡ sensor_count
     //
     // |     id | measuring_id | block_id | sensor_id |
     // | ------ | ------------ | -------- | --------- |
@@ -146,6 +147,7 @@ fn main() -> Result<()> {
 
     info!("INSERT measuring_values");
     // O ≡ measurement_count
+    // P ≡ sensor_count
     //
     // |        id | measuring_point_id | block_element | phase | value |
     // | --------- | ------------------ | ------------- | ----- | ----- |
