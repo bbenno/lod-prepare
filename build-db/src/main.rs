@@ -1,18 +1,10 @@
+use clap::{crate_authors, crate_description, crate_version, App, Arg};
 use log::{debug, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use std::{f64::consts::PI, time::SystemTime};
 
-#[path = "../../src/cli.rs"]
-mod cli;
-
 /// Block (element) size
 const N: usize = 64;
-/// BLock count
-const M: usize = 16;
-/// Measurements count
-const O: usize = 10;
-/// Sensor count
-const P: usize = 5;
 /// `2¹¹`
 const MEAN: f64 = 2048f64;
 /// `2π / N`
@@ -22,10 +14,45 @@ fn main() -> Result<()> {
     // LOGGER INIT
     env_logger::init();
 
-    let args = cli::get_args();
+    let opts = App::new("LOD Prepare")
+        .about(crate_description!())
+        .author(crate_authors!())
+        .version(crate_version!())
+        .args(&[
+            Arg::from_usage("<database> 'Sets the database file to use'"),
+            Arg::from_usage("-s, --sensors <SENSOR_COUNT> 'Sets count of sensors'")
+                .case_insensitive(true)
+                .default_value("5"),
+            Arg::from_usage("-m, --measurements <MEASUREMENT_COUNT> 'Sets count of measurements'")
+                .case_insensitive(true)
+                .default_value("10"),
+            Arg::from_usage("-b, --blocks <BLOCK_COUNT> 'Sets count of blocks'")
+                .case_insensitive(true)
+                .default_value("16"),
+        ])
+        .get_matches();
+
+    let sensor_count: usize = opts
+        .value_of("sensors")
+        .expect("Failed to get value of 'sensors'")
+        .parse()
+        .expect("Failed to parse value of sensors to number");
+    let measurement_count: usize = opts
+        .value_of("measurements")
+        .expect("Failed to get value of 'measurements'")
+        .parse()
+        .expect("Failed to parse value of measurements to number");
+    let block_count: usize = opts
+        .value_of("blocks")
+        .expect("Failed to get value of 'blocks'")
+        .parse()
+        .expect("Failed to parse value of blocks to number");
+    let db_name = opts
+        .value_of("database")
+        .expect("Failed to read line argument \"database\"");
 
     let mut db_conn =
-        Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+        Connection::open_with_flags(db_name, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
     debug!("Database connection established");
 
@@ -56,13 +83,15 @@ fn main() -> Result<()> {
         .as_secs() as u32;
 
     info!("INSERT measurements");
+    // O ≡ measurement_count
+    //
     // |  id | date |
     // | --- | ---- |
     // |   1 |  now |
     // |   2 |  now |
     // | ... |  now |
     // |   O |  now |
-    (1..=O).for_each(|measurement_id| {
+    (1..=measurement_count).for_each(|measurement_id| {
         trace!(
             "INSERT `measurement` (id: {}, date: {})",
             measurement_id,
@@ -74,6 +103,10 @@ fn main() -> Result<()> {
     });
 
     info!("INSERT measuring_points");
+    // M ≡ block_count
+    // O ≡ measurement_count
+    // P ≡ sensor_count
+    //
     // |     id | measuring_id | block_id | sensor_id |
     // | ------ | ------------ | -------- | --------- |
     // |      1 |            1 |        1 |         1 |
@@ -86,11 +119,11 @@ fn main() -> Result<()> {
     // | M*P +1 |            2 |        1 |         1 |
     // |    ... |          ... |      ... |       ... |
     // |  O*M*P |            O |        M |         P |
-    (1..=O).for_each(|measurement_id| {
+    (1..=measurement_count).for_each(|measurement_id| {
         // for all measurements
-        (1..=M).for_each(|block_id| {
+        (1..=block_count).for_each(|block_id| {
             // for all block_elements
-            (1..=P as u32).for_each(|sensor_id| {
+            (1..=sensor_count as u32).for_each(|sensor_id| {
                 // for all sensors
                 trace!(
                     "INSERT `measuring_point` (block_id: {}, measurement_id: {}, sensor_id: {})",
@@ -120,6 +153,10 @@ fn main() -> Result<()> {
     }
 
     info!("INSERT measuring_values");
+    // M ≡ block_count
+    // O ≡ measurement_count
+    // P ≡ sensor_count
+    //
     // |        id | measuring_point_id | block_element | phase | value |
     // | --------- | ------------------ | ------------- | ----- | ----- |
     // |         1 |                  1 |             1 |     0 |  XXXX |
@@ -132,7 +169,7 @@ fn main() -> Result<()> {
     // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
     // |       ... |                ... |           ... |   ... |   ... |
     // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
-    (1..=(O * M * P)).for_each(|measuring_point_id| {
+    (1..=(measurement_count * block_count * sensor_count)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
             (0..=1).for_each(|phase| {

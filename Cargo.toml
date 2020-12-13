@@ -1,7 +1,8 @@
 [package]
 name = "lod-prepare"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>"]
+description = "Transform raw sensor data and prepare it for ML usage"
 edition = "2018"
 default-run = "lod-prepare"
 
@@ -13,11 +14,9 @@ members = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rustfft = "4"
+clap = { version = "2.33", features = ["color"] }
+env_logger = "*"
 exitcode = "1.1.2"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
-env_logger = "*"
-
-[dependencies.rusqlite]
-version = "0.24.1"
-features = ["bundled"]
+rusqlite = { version = "0.24", features = ["bundled"] }
+rustfft = "4"
