@@ -7,6 +7,7 @@ use rusqlite::{params, Connection, OpenFlags, Result};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
+use std::f32::consts::PI;
 
 mod cli;
 
@@ -142,4 +143,59 @@ fn main() -> Result<()> {
 
 fn f_idx_to_freq(idx: usize) -> f64 {
     (idx as f64) / T
+}
+
+/// Blackman window mit α = 0.16
+///
+/// # Arguments
+///
+/// * `n` - index of current input signal in window of width N
+///
+/// # Example
+///
+/// ```
+/// input
+///     .chunks_exact(N)
+///     .map(|(index, chunk)| {
+///         chunk
+///             .iter()
+///             .enumerate()
+///             .map(|(index, value)| hamming(index as u32) * value)
+///             .collect()
+///     });
+/// ```
+fn blackman(n: u32) -> f32 {
+    const A: f32 = 0.16;
+    const A0: f32 = (1f32 - A) / 2f32;
+    const A1: f32 = 0.5f32;
+    const A2: f32 = A / 2f32;
+
+    return A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
+        + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos();
+}
+
+/// Hamming window
+///
+/// # Arguments
+///
+/// * `n` - index of current input signal in window of width N
+///
+/// # Example
+///
+/// ```
+/// input
+///     .chunks_exact(N)
+///     .map(|(index, chunk)| {
+///         chunk
+///             .iter()
+///             .enumerate()
+///             .map(|(index, value)| hamming(index as u32) * value)
+///             .collect()
+///     });
+/// ```
+fn hamming(n: u32) -> f32 {
+    const A: f32 = 25f32 / 46f32;
+    const B: f32 = 1f32 - A;
+
+    return A - B * ((2f32 * PI * n as f32) / (N - 1) as f32).cos();
 }
