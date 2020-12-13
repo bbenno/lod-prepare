@@ -7,8 +7,6 @@ use std::{f64::consts::PI, time::SystemTime};
 const N: usize = 64;
 /// BLock count
 const M: usize = 16;
-/// Measurements count
-const O: usize = 10;
 /// `2¹¹`
 const MEAN: f64 = 2048f64;
 /// `2π / N`
@@ -27,6 +25,9 @@ fn main() -> Result<()> {
             Arg::from_usage("-s, --sensors <SENSOR_COUNT> 'Sets count of sensors'")
                 .case_insensitive(true)
                 .default_value("5"),
+            Arg::from_usage("-m, --measurements <MEASUREMENT_COUNT> 'Sets count of measurements'")
+                .case_insensitive(true)
+                .default_value("10"),
         ])
         .get_matches();
 
@@ -35,6 +36,11 @@ fn main() -> Result<()> {
         .expect("Failed to get value of 'sensors'")
         .parse()
         .expect("Failed to parse value of sensor=\"{}\" to number");
+    let measurement_count: usize = opts
+        .value_of("measurements")
+        .expect("Failed to get value of 'measurements'")
+        .parse()
+        .expect("Failed to parse value of measurements to number");
     let db_name = opts
         .value_of("database")
         .expect("Failed to read line argument \"database\"");
@@ -71,13 +77,15 @@ fn main() -> Result<()> {
         .as_secs() as u32;
 
     info!("INSERT measurements");
+    // O ≡ measurement_count
+    //
     // |  id | date |
     // | --- | ---- |
     // |   1 |  now |
     // |   2 |  now |
     // | ... |  now |
     // |   O |  now |
-    (1..=O).for_each(|measurement_id| {
+    (1..=measurement_count).for_each(|measurement_id| {
         trace!(
             "INSERT `measurement` (id: {}, date: {})",
             measurement_id,
@@ -89,6 +97,8 @@ fn main() -> Result<()> {
     });
 
     info!("INSERT measuring_points");
+    // O ≡ measurement_count
+    //
     // |     id | measuring_id | block_id | sensor_id |
     // | ------ | ------------ | -------- | --------- |
     // |      1 |            1 |        1 |         1 |
@@ -101,7 +111,7 @@ fn main() -> Result<()> {
     // | M*P +1 |            2 |        1 |         1 |
     // |    ... |          ... |      ... |       ... |
     // |  O*M*P |            O |        M |         P |
-    (1..=O).for_each(|measurement_id| {
+    (1..=measurement_count).for_each(|measurement_id| {
         // for all measurements
         (1..=M).for_each(|block_id| {
             // for all block_elements
@@ -135,6 +145,8 @@ fn main() -> Result<()> {
     }
 
     info!("INSERT measuring_values");
+    // O ≡ measurement_count
+    //
     // |        id | measuring_point_id | block_element | phase | value |
     // | --------- | ------------------ | ------------- | ----- | ----- |
     // |         1 |                  1 |             1 |     0 |  XXXX |
@@ -147,7 +159,7 @@ fn main() -> Result<()> {
     // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
     // |       ... |                ... |           ... |   ... |   ... |
     // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
-    (1..=(O * M * sensor_count)).for_each(|measuring_point_id| {
+    (1..=(measurement_count * M * sensor_count)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
             (0..=1).for_each(|phase| {
