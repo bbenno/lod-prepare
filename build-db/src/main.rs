@@ -1,9 +1,7 @@
+use clap::{crate_authors, crate_description, crate_version, App, Arg};
 use log::{debug, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result};
 use std::{f64::consts::PI, time::SystemTime};
-
-#[path = "../../src/cli.rs"]
-mod cli;
 
 /// Block (element) size
 const N: usize = 64;
@@ -22,10 +20,21 @@ fn main() -> Result<()> {
     // LOGGER INIT
     env_logger::init();
 
-    let args = cli::get_args();
+    let opts = App::new("LOD Prepare")
+        .about(crate_description!())
+        .author(crate_authors!())
+        .version(crate_version!())
+        .args(&[Arg::from_usage(
+            "<database> 'Sets the database file to use'",
+        )])
+        .get_matches();
+
+    let db_name = opts
+        .value_of("database")
+        .expect("Failed to read line argument \"database\"");
 
     let mut db_conn =
-        Connection::open_with_flags(&args[1], OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+        Connection::open_with_flags(db_name, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
     let tx = db_conn.transaction().unwrap();
     debug!("Database connection established");
 
