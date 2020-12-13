@@ -7,10 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+env_logger = "*"
 exitcode = "1.1.2"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
-env_logger = "*"
-
-[dependencies.rusqlite]
-version = "0.24.1"
-features = ["bundled"]
+rusqlite = { version = "0.24", features = ["bundled"] }
