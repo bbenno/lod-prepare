@@ -5,8 +5,6 @@ use std::{f64::consts::PI, time::SystemTime};
 
 /// Block (element) size
 const N: usize = 64;
-/// BLock count
-const M: usize = 16;
 /// `2¹¹`
 const MEAN: f64 = 2048f64;
 /// `2π / N`
@@ -28,6 +26,9 @@ fn main() -> Result<()> {
             Arg::from_usage("-m, --measurements <MEASUREMENT_COUNT> 'Sets count of measurements'")
                 .case_insensitive(true)
                 .default_value("10"),
+            Arg::from_usage("-b, --blocks <BLOCK_COUNT> 'Sets count of blocks'")
+                .case_insensitive(true)
+                .default_value("16"),
         ])
         .get_matches();
 
@@ -41,6 +42,11 @@ fn main() -> Result<()> {
         .expect("Failed to get value of 'measurements'")
         .parse()
         .expect("Failed to parse value of measurements to number");
+    let block_count: usize = opts
+        .value_of("blocks")
+        .expect("Failed to get value of 'blocks'")
+        .parse()
+        .expect("Failed to parse value of blocks to number");
     let db_name = opts
         .value_of("database")
         .expect("Failed to read line argument \"database\"");
@@ -97,6 +103,7 @@ fn main() -> Result<()> {
     });
 
     info!("INSERT measuring_points");
+    // M ≡ block_count
     // O ≡ measurement_count
     // P ≡ sensor_count
     //
@@ -114,7 +121,7 @@ fn main() -> Result<()> {
     // |  O*M*P |            O |        M |         P |
     (1..=measurement_count).for_each(|measurement_id| {
         // for all measurements
-        (1..=M).for_each(|block_id| {
+        (1..=block_count).for_each(|block_id| {
             // for all block_elements
             (1..=sensor_count as u32).for_each(|sensor_id| {
                 // for all sensors
@@ -146,6 +153,7 @@ fn main() -> Result<()> {
     }
 
     info!("INSERT measuring_values");
+    // M ≡ block_count
     // O ≡ measurement_count
     // P ≡ sensor_count
     //
@@ -161,7 +169,7 @@ fn main() -> Result<()> {
     // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
     // |       ... |                ... |           ... |   ... |   ... |
     // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
-    (1..=(measurement_count * M * sensor_count)).for_each(|measuring_point_id| {
+    (1..=(measurement_count * block_count * sensor_count)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
             (0..=1).for_each(|phase| {
