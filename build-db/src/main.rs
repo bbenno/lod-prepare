@@ -9,8 +9,6 @@ const N: usize = 64;
 const M: usize = 16;
 /// Measurements count
 const O: usize = 10;
-/// Sensor count
-const P: usize = 5;
 /// `2¹¹`
 const MEAN: f64 = 2048f64;
 /// `2π / N`
@@ -24,11 +22,19 @@ fn main() -> Result<()> {
         .about(crate_description!())
         .author(crate_authors!())
         .version(crate_version!())
-        .args(&[Arg::from_usage(
-            "<database> 'Sets the database file to use'",
-        )])
+        .args(&[
+            Arg::from_usage("<database> 'Sets the database file to use'"),
+            Arg::from_usage("-s, --sensors <SENSOR_COUNT> 'Sets count of sensors'")
+                .case_insensitive(true)
+                .default_value("5"),
+        ])
         .get_matches();
 
+    let sensor_count: usize = opts
+        .value_of("sensors")
+        .expect("Failed to get value of 'sensors'")
+        .parse()
+        .expect("Failed to parse value of sensor=\"{}\" to number");
     let db_name = opts
         .value_of("database")
         .expect("Failed to read line argument \"database\"");
@@ -99,7 +105,7 @@ fn main() -> Result<()> {
         // for all measurements
         (1..=M).for_each(|block_id| {
             // for all block_elements
-            (1..=P as u32).for_each(|sensor_id| {
+            (1..=sensor_count as u32).for_each(|sensor_id| {
                 // for all sensors
                 trace!(
                     "INSERT `measuring_point` (block_id: {}, measurement_id: {}, sensor_id: {})",
@@ -141,7 +147,7 @@ fn main() -> Result<()> {
     // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
     // |       ... |                ... |           ... |   ... |   ... |
     // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
-    (1..=(O * M * P)).for_each(|measuring_point_id| {
+    (1..=(O * M * sensor_count)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
             (0..=1).for_each(|phase| {
