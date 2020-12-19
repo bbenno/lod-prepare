@@ -33,18 +33,21 @@ fn main() -> Result<()> {
         .args_from_usage(
             "<database>                  'Sets the database file to use'
              [hamming]  -h --hamming     'Sets hamming window function'
-             [blackman] -b --blackman    'Sets blackman window function'",
+             [blackman] -b --blackman    'Sets blackman window function'
+             [blackman-harris] --blackman-harris 'Sets blackman-harris window function'",
         )
         .group(
             ArgGroup::with_name("window function")
-                .args(&["hamming", "blackman"])
+                .args(&["hamming", "blackman", "blackman-harris"])
                 .required(false),
         )
         .get_matches();
 
+    // Only one option is present due to the mutual exclusion of the ArgGroup.
     let window: Window = match opts {
         _ if opts.is_present("hamming") => hamming,
         _ if opts.is_present("blackman") => blackman,
+        _ if opts.is_present("blackman-harris") => blackman_harris,
         _ => dirichlet,
     };
     let db_name = opts
@@ -228,6 +231,43 @@ fn blackman(n: u32) -> f32 {
 
     return A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
         + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos();
+}
+
+/// Blackman-Harris      window with α = 0.16
+///
+/// 𝑤(𝑛) = 𝛼₀ − 𝛼₁ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)) + 𝛼₂ × 𝑐𝑜𝑠(4𝜋𝑛 / (𝑁-1)) - 𝛼₃ × 𝑐𝑜𝑠(6𝜋𝑛 / (𝑁-1)),   𝑛 = 0,…,𝑁-1
+///
+/// * 𝛼₀ = 0.35875
+/// * 𝛼₁ = 0.48829
+/// * 𝛼₂ = 0.14128
+/// * 𝛼₃ = 0.01168
+///
+/// # Arguments
+///
+/// * `n` - index of current input signal in window of width N
+///
+/// # Example
+///
+/// ```
+/// input
+///     .chunks_exact(N)
+///     .map(|(index, chunk)| {
+///         chunk
+///             .iter()
+///             .enumerate()
+///             .map(|(index, value)| blackman_harris(index as u32) * value)
+///             .collect()
+///     });
+/// ```
+fn blackman_harris(n: u32) -> f32 {
+    const A0: f32 = 0.35875f32;
+    const A1: f32 = 0.48829f32;
+    const A2: f32 = 0.14128f32;
+    const A3: f32 = 0.01168f32;
+
+    return A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
+        + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos()
+        - A3 * ((6f32 * PI * n as f32) / (N - 1) as f32).cos();
 }
 
 /// Hamming window
