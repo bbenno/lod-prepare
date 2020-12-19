@@ -139,7 +139,7 @@ fn main() -> Result<()> {
             .map(|(c, i)| SensorValue { id: i, value: c})
             .collect::<Vec<SensorValue>>();
 
-        if input.len() == 0 {
+        if input.is_empty() {
             info!("no FFT input")
         } else {
             trace!("FFT input: {:?}", input);
@@ -148,7 +148,7 @@ fn main() -> Result<()> {
 
         Ok(output_values)
     }()
-    .unwrap_or(Default::default())
+    .unwrap_or_default()
     // DB INSERTION
     .chunks_exact(N)
     .for_each(|block|
@@ -195,7 +195,7 @@ fn f_idx_to_freq(idx: usize) -> f64 {
 ///     });
 /// ```
 fn dirichlet(_n: u32) -> f32 {
-    return 1f32;
+    1f32
 }
 
 /// Blackman window with α = 0.16
@@ -229,8 +229,8 @@ fn blackman(n: u32) -> f32 {
     const A1: f32 = 0.5f32;
     const A2: f32 = A / 2f32;
 
-    return A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
-        + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos();
+    A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
+        + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos()
 }
 
 /// Blackman-Harris      window with α = 0.16
@@ -265,9 +265,9 @@ fn blackman_harris(n: u32) -> f32 {
     const A2: f32 = 0.14128f32;
     const A3: f32 = 0.01168f32;
 
-    return A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
+    A0 - A1 * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
         + A2 * ((4f32 * PI * n as f32) / (N - 1) as f32).cos()
-        - A3 * ((6f32 * PI * n as f32) / (N - 1) as f32).cos();
+        - A3 * ((6f32 * PI * n as f32) / (N - 1) as f32).cos()
 }
 
 /// Hamming window
@@ -298,5 +298,5 @@ fn hamming(n: u32) -> f32 {
     const A: f32 = 25f32 / 46f32;
     const B: f32 = 1f32 - A;
 
-    return A - B * ((2f32 * PI * n as f32) / (N - 1) as f32).cos();
+    A - B * ((2f32 * PI * n as f32) / (N - 1) as f32).cos()
 }
