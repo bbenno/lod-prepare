@@ -190,7 +190,7 @@ fn f_idx_to_freq(idx: usize) -> f64 {
 ///         chunk
 ///             .iter()
 ///             .enumerate()
-///             .map(|(index, value)| hamming(index as u32) * value)
+///             .map(|(index, value)| dirichlet(index as u32) * value)
 ///             .collect()
 ///     });
 /// ```
@@ -200,7 +200,7 @@ fn dirichlet(_n: u32) -> f32 {
 
 /// Blackman window with α = 0.16
 ///
-/// 𝑤(𝑛) = 𝛼₀ − 𝛼₁ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)) − 𝛼₂ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)),   𝑛 = 0,…,𝑁-1
+/// 𝑤(𝑛) = 𝛼₀ − 𝛼₁ × 𝑐𝑜𝑠(2𝜋𝑛 / (𝑁-1)) + 𝛼₂ × 𝑐𝑜𝑠(4𝜋𝑛 / (𝑁-1)),   𝑛 = 0,…,𝑁-1
 ///
 /// * 𝛼₀ = 0.5 × (1 - 𝛼)
 /// * 𝛼₁ = 0.5
@@ -219,7 +219,7 @@ fn dirichlet(_n: u32) -> f32 {
 ///         chunk
 ///             .iter()
 ///             .enumerate()
-///             .map(|(index, value)| hamming(index as u32) * value)
+///             .map(|(index, value)| blackman(index as u32) * value)
 ///             .collect()
 ///     });
 /// ```
