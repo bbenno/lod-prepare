@@ -174,7 +174,7 @@ fn main() -> Result<()> {
 }
 
 fn f_idx_to_freq(idx: usize) -> f64 {
-    (idx as f64) / T
+    (idx as f64 - (N / 2) as f64) / T
 }
 
 /// Dirichlet window
