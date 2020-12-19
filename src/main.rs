@@ -31,10 +31,10 @@ fn main() -> Result<()> {
         .author(crate_authors!())
         .version(crate_version!())
         .args_from_usage(
-            "<database>                  'Sets the database file to use'
-             [hamming]  -h --hamming     'Sets hamming window function'
-             [blackman] -b --blackman    'Sets blackman window function'
-             [blackman-harris] --blackman-harris 'Sets blackman-harris window function'",
+            "<database>                           'Sets the database file to use'
+             [hamming]         --hamming          'Sets hamming window function'
+             [blackman]        --blackman         'Sets blackman window function'
+             [blackman-harris] --blackman-harris  'Sets blackman-harris window function'",
         )
         .group(
             ArgGroup::with_name("window function")
