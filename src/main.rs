@@ -4,7 +4,7 @@
 
 use clap::{crate_authors, crate_description, crate_version, App, ArgGroup};
 use log::{debug, error, info, trace};
-use rusqlite::{params, Connection, OpenFlags, Result};
+use rusqlite::{params, Connection, OpenFlags, Result, NO_PARAMS};
 use rustfft::num_complex::Complex32;
 use rustfft::num_traits::Zero;
 use rustfft::FFTplanner;
@@ -64,6 +64,10 @@ fn main() -> Result<()> {
     let mut selection = tx
         .prepare("SELECT `measuring_point_id`, `I`, `Q` FROM `sensor_value` ORDER BY `measuring_point_id`")
         .unwrap();
+
+    // DELETE previous training data
+    tx.execute("DELETE FROM `training_value`", NO_PARAMS)
+        .expect("Failed deleting the previous training data");
 
     // FFT INIT
     let mut planner = FFTplanner::new(false);
