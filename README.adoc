@@ -4,8 +4,8 @@ Benno Bielmeier <benno.bielmeier@st.oth-regensburg.de>
 
 This repository is a component of the author's bachelor thesis.
 It focuses the "`data preparation`" step of an machine learning (_ML_) pipeline.
-More precisely this componet takes raw sensor measurments and transform them to frequency space using the https://en.wikipedia.org/wiki/Fast_Fourier_transform[FFT].
-The measurement values are retrieved from table named `measured_values` of a certain database.
+More precisely this component takes raw sensor measurements and transform them to frequency space using the https://en.wikipedia.org/wiki/Fast_Fourier_transform[FFT].
+The measurement values are retrieved from a table named `measured_values` of a certain database.
 The FFT results are inserted into table `training_data` of the same database.
 
 Besides the _main_ package `lod-prepare` (that does the above mentioned FFT transformation) a workspace name `build-db` can be found in this project.
