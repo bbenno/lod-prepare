@@ -115,10 +115,10 @@ fn main() -> Result<()> {
     // |      P |            1 |        1 |         P |
     // |   P +1 |            1 |        2 |         1 |
     // |    ... |          ... |      ... |       ... |
-    // |    M*P |            1 |        M |         P |
-    // | M*P +1 |            2 |        1 |         1 |
+    // |    M×P |            1 |        M |         P |
+    // | M×P +1 |            2 |        1 |         1 |
     // |    ... |          ... |      ... |       ... |
-    // |  O*M*P |            O |        M |         P |
+    // |  O×M×P |            O |        M |         P |
     (1..=measurement_count).for_each(|measurement_id| {
         // for all measurements
         (1..=block_count).for_each(|block_id| {
@@ -165,10 +165,10 @@ fn main() -> Result<()> {
     // |         4 |                  1 |             2 |     1 |  XXXX |
     // |         5 |                  1 |             3 |     0 |  XXXX |
     // |       ... |                ... |               |   ... |   ... |
-    // |       2*N |                  1 |             N |     1 |  XXXX |
-    // |    2*N +1 |                  2 |             1 |     0 |  XXXX |
+    // |       2×N |                  1 |             N |     1 |  XXXX |
+    // |    2×N +1 |                  2 |             1 |     0 |  XXXX |
     // |       ... |                ... |           ... |   ... |   ... |
-    // | 2*N*O*M*P |              O*M*P |             N |     1 |  XXXX |
+    // | 2×N×O×M×P |              O×M×P |             N |     1 |  XXXX |
     (1..=(measurement_count * block_count * sensor_count)).for_each(|measuring_point_id| {
         (1..=N).for_each(|block_element| {
             // for each measuring_point_id
@@ -196,7 +196,7 @@ fn main() -> Result<()> {
 
     info!("Finished");
 
-    // drop borrowed statements in order to drop Transaction tx
+    // Drop borrowed statements in order to drop transaction tx
     drop(insert_measuring_value);
     drop(insert_measuring_point);
     drop(insert_measurement);
