@@ -5,9 +5,7 @@
 use clap::{crate_authors, crate_description, crate_version, App, ArgGroup};
 use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result, NO_PARAMS};
-use rustfft::num_complex::Complex32;
-use rustfft::num_traits::Zero;
-use rustfft::FFTplanner;
+use rustfft::{num_complex::Complex32, FftPlanner};
 use std::f32::consts::PI;
 
 /// Sampling time for N measurements
@@ -70,8 +68,8 @@ fn main() -> Result<()> {
         .expect("Failed deleting the previous training data");
 
     // FFT INIT
-    let mut planner = FFTplanner::new(false);
-    let fft = planner.plan_fft(N);
+    let mut planner = FftPlanner::new();
+    let fft = planner.plan_fft_forward(N);
 
     || -> Result<Vec<SensorValue>, &'static str> {
         info!("Read `measured_values` from database");
@@ -91,22 +89,22 @@ fn main() -> Result<()> {
             .map(|row_result| row_result.unwrap())
             .collect::<Vec<SensorValue>>();
 
-        let mut input = input_values
+        let mut buffer = input_values
             .iter()
             .map(|sv| sv.value)
             .collect::<Vec<Complex32>>();
 
-        debug!("{} input values", input.len());
-        trace!("Input: {:#?}", input);
+        debug!("{} buffer values", buffer.len());
+        trace!("Buffer: {:#?}", buffer);
 
-        if input.len() % N != 0 {
-            error!("Count of input values has to be multiple of {}. Got: {}", N, input.len());
+        if buffer.len() % N != 0 {
+            error!("Count of buffer values has to be multiple of {}. Got: {}", N, buffer.len());
             return Err("invalid data length");
         }
 
         // Calculate mean per chunk
         //   mean = ∑ᴺᵢ₌₁(xᵢ) / N
-        let means = input
+        let means = buffer
             .chunks_exact(N)
             .map(|c| c.iter().sum::<Complex32>() / (N as f32))
             .collect::<Vec<Complex32>>();
@@ -114,7 +112,7 @@ fn main() -> Result<()> {
 
         // INPUT NORMALIZATION: Remove DC offset
         //   xᵢ ↦ xᵢ - mean
-        input = input
+        buffer = buffer
             .chunks_exact(N)
             .enumerate()
             .map(|(i, c)|
@@ -128,26 +126,20 @@ fn main() -> Result<()> {
             .flatten()
             .collect();
 
-        // Each input needs its output buffer to write to.
-        let mut output: Vec<Complex32> = vec![Zero::zero(); input.len()];
-
         // CALCULATE FFT
-        fft.process_multi(&mut input, &mut output);
+        fft.process(&mut buffer);
 
         // OUTPUT NORMALIZATION
         //   yᵢ ↦ yᵢ / √N
-        let output_values = output
+        let output_values = buffer
             .iter()
             .map(|c| c * (N as f32).sqrt().recip())
             .zip(input_values.iter().map(|d| d.id))
             .map(|(c, i)| SensorValue { id: i, value: c})
             .collect::<Vec<SensorValue>>();
 
-        if input.is_empty() {
+        if buffer.is_empty() {
             info!("no FFT input")
-        } else {
-            trace!("FFT input: {:?}", input);
-            trace!("FFT output: {:?}", output);
         }
 
         Ok(output_values)
