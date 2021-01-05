@@ -19,4 +19,4 @@ env_logger = "*"
 exitcode = "1.1.2"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
 rusqlite = { version = "0.24", features = ["bundled"] }
-rustfft = "4"
+rustfft = "5"
