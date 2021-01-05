@@ -5,9 +5,7 @@
 use clap::{crate_authors, crate_description, crate_version, App, ArgGroup};
 use log::{debug, error, info, trace};
 use rusqlite::{params, Connection, OpenFlags, Result, NO_PARAMS};
-use rustfft::num_complex::Complex32;
-use rustfft::num_traits::Zero;
-use rustfft::FFTplanner;
+use rustfft::{num_complex::Complex32, num_traits::Zero, FFTplanner};
 use std::f32::consts::PI;
 
 /// Sampling time for N measurements
