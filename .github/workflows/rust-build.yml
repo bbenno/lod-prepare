@@ -1,0 +1,23 @@
+name: Rust Build
+
+on: [ push ]
+
+jobs:
+  build:
+    name: Build Release for x86_64-pc-windows-msvc
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v2
+    - name: Install stable toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc
+        override: true
+    - name: Run cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --release --all-features -p lod-prepare --target x86_64-pc-windows-msvc
