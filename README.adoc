@@ -11,17 +11,16 @@ The FFT results are inserted into table `training_data` of the same database.
 Besides the _main_ package `lod-prepare` (that does the above mentioned FFT transformation) a workspace name `build-db` can be found in this project.
 It provides a handy way to insert some well-defined dummy data into the mentioned table `measured_values` of an empty, pre-existing database.
 
-== Setup / Usage
+== Setup
 
 [IMPORTANT]
-.Prerequirements
+.Prerequisites
 ================================================================================
-* https://www.rust-lang.org[Rust] installed
-* https://www.sqlite.org[SQLite3] installed
+* https://www.rust-lang.org/learn/get-started[Rust] (v1.48.0) +
+(Dependency Management: https://doc.rust-lang.org/cargo/index.html[`cargo`])
+* https://www.sqlite.org[SQLite3] (v3.33.0)
 * pre-existing, empty database
 ================================================================================
-
-TIP: Want to set up the entire development environment? Have a look at mine in link:tooling.adoc[Tooling] document.
 
 [NOTE]
 ================================================================================
