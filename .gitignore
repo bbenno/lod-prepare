@@ -5,7 +5,8 @@
 
 # VScode
 /.vs/
-/.vscode/
+/.vscode/*
+!/.vscode/settings.json
 
 # databases
 *.db
