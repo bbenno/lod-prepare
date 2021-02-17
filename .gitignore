@@ -3,10 +3,8 @@
 # vim
 *.swp
 
-# VScode
+# VS
 /.vs/
-/.vscode/*
-!/.vscode/settings.json
 
 # databases
 *.db
